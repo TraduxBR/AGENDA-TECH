@@ -312,6 +312,7 @@
     <string name="settings_notif_sound_reset">Volver al sonido del sistema</string>
     <string name="settings_notif_vibrate">Vibrar</string>
     <string name="settings_notif_lockscreen">Mostrar en la pantalla de bloqueo</string>
+    <string name="settings_snooze">Posponer durante</string>
     <string name="settings_notif_system">Abrir los ajustes de notificaciones del sistema</string>
     <string name="settings_section_privacy">Privacidad</string>
     <string name="settings_flag_secure">Bloquear capturas de pantalla</string>
@@ -413,9 +414,21 @@
     <string name="device_import_failed">No se pudieron leer los calendarios del dispositivo. No se ha cambiado nada — inténtelo de nuevo.</string>
     <string name="device_import_action">Importar (%1$d)</string>
     <string name="device_import_running">Importando…</string>
-    <string name="device_import_done">%1$d eventos importados de %2$d calendario(s).</string>
-    <string name="device_import_partial">%1$d eventos importados de %2$d calendario(s). No se pudieron leer %3$d calendario(s).</string>
-    <string name="device_import_truncated">%1$d eventos importados de %2$d calendario(s). La selección contenía más de los %3$d que esta app acepta en una sola importación — importe por separado los calendarios restantes.</string>
+    <plurals name="device_import_done">
+        <item quantity="one">%1$d evento importado. Calendarios leídos: %2$d.</item>
+        <item quantity="many">%1$d de eventos importados. Calendarios leídos: %2$d.</item>
+        <item quantity="other">%1$d eventos importados. Calendarios leídos: %2$d.</item>
+    </plurals>
+    <plurals name="device_import_partial">
+        <item quantity="one">%1$d evento importado. Calendarios leídos: %2$d. Calendarios que no se pudieron leer: %3$d.</item>
+        <item quantity="many">%1$d de eventos importados. Calendarios leídos: %2$d. Calendarios que no se pudieron leer: %3$d.</item>
+        <item quantity="other">%1$d eventos importados. Calendarios leídos: %2$d. Calendarios que no se pudieron leer: %3$d.</item>
+    </plurals>
+    <plurals name="device_import_truncated">
+        <item quantity="one">%1$d evento importado. Calendarios leídos: %2$d. La selección contenía más de los %3$d eventos que esta app acepta en una sola importación — importe por separado los calendarios restantes.</item>
+        <item quantity="many">%1$d de eventos importados. Calendarios leídos: %2$d. La selección contenía más de los %3$d eventos que esta app acepta en una sola importación — importe por separado los calendarios restantes.</item>
+        <item quantity="other">%1$d eventos importados. Calendarios leídos: %2$d. La selección contenía más de los %3$d eventos que esta app acepta en una sola importación — importe por separado los calendarios restantes.</item>
+    </plurals>
     <string name="device_import_clear">Eliminar los calendarios importados anteriormente</string>
     <string name="device_import_cleared">Calendarios importados eliminados.</string>
     <string name="device_import_clear_confirm_title">¿Eliminar los calendarios importados?</string>
@@ -477,8 +490,12 @@
     <string name="backup_restore_confirm_action">Sustituir</string>
     <string name="backup_working">Cifrando…</string>
     <string name="backup_working_sub">Unos segundos: es el cálculo que protege su contraseña.</string>
-    <string name="backup_exported">Copia creada: %1$d evento(s).</string>
-    <string name="backup_restored">Restaurado: %1$d calendario(s), %2$d evento(s), %3$d recordatorio(s).</string>
+    <plurals name="backup_exported">
+        <item quantity="one">Copia creada: %1$d evento.</item>
+        <item quantity="many">Copia creada: %1$d de eventos.</item>
+        <item quantity="other">Copia creada: %1$d eventos.</item>
+    </plurals>
+    <string name="backup_restored">Restaurado — calendarios: %1$d, eventos: %2$d, recordatorios: %3$d.</string>
     <string name="backup_bad_password">Contraseña incorrecta, o archivo dañado.</string>
     <string name="backup_not_a_backup">Este archivo no es una copia de seguridad de Agenda Tech.</string>
     <string name="backup_too_new">Esta copia la escribió una versión más reciente de Agenda Tech. Actualice la app para restaurarla — no borre el archivo.</string>

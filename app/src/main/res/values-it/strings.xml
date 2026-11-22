@@ -313,6 +313,7 @@
     <string name="settings_notif_sound_reset">Torna al suono di sistema</string>
     <string name="settings_notif_vibrate">Vibrazione</string>
     <string name="settings_notif_lockscreen">Mostra nella schermata di blocco</string>
+    <string name="settings_snooze">Posticipa di</string>
     <string name="settings_notif_system">Apri le impostazioni di sistema delle notifiche</string>
     <string name="settings_section_privacy">Privacy</string>
     <string name="settings_flag_secure">Blocca gli screenshot</string>
@@ -414,9 +415,21 @@
     <string name="device_import_failed">Non è stato possibile leggere i calendari del dispositivo. Non è stato modificato nulla — riprovi.</string>
     <string name="device_import_action">Importa (%1$d)</string>
     <string name="device_import_running">Importazione…</string>
-    <string name="device_import_done">%1$d eventi importati da %2$d calendario/i.</string>
-    <string name="device_import_partial">%1$d eventi importati da %2$d calendario/i. %3$d calendario/i non hanno potuto essere letti.</string>
-    <string name="device_import_truncated">%1$d eventi importati da %2$d calendario/i. La selezione ne conteneva più dei %3$d che questa app accetta in una sola importazione — importi separatamente i calendari rimanenti.</string>
+    <plurals name="device_import_done">
+        <item quantity="one">%1$d evento importato. Calendari letti: %2$d.</item>
+        <item quantity="many">%1$d di eventi importati. Calendari letti: %2$d.</item>
+        <item quantity="other">%1$d eventi importati. Calendari letti: %2$d.</item>
+    </plurals>
+    <plurals name="device_import_partial">
+        <item quantity="one">%1$d evento importato. Calendari letti: %2$d. Calendari non leggibili: %3$d.</item>
+        <item quantity="many">%1$d di eventi importati. Calendari letti: %2$d. Calendari non leggibili: %3$d.</item>
+        <item quantity="other">%1$d eventi importati. Calendari letti: %2$d. Calendari non leggibili: %3$d.</item>
+    </plurals>
+    <plurals name="device_import_truncated">
+        <item quantity="one">%1$d evento importato. Calendari letti: %2$d. La selezione conteneva più dei %3$d eventi che questa app accetta in una sola importazione — importi separatamente i calendari rimanenti.</item>
+        <item quantity="many">%1$d di eventi importati. Calendari letti: %2$d. La selezione conteneva più dei %3$d eventi che questa app accetta in una sola importazione — importi separatamente i calendari rimanenti.</item>
+        <item quantity="other">%1$d eventi importati. Calendari letti: %2$d. La selezione conteneva più dei %3$d eventi che questa app accetta in una sola importazione — importi separatamente i calendari rimanenti.</item>
+    </plurals>
     <string name="device_import_clear">Elimina i calendari importati in precedenza</string>
     <string name="device_import_cleared">Calendari importati eliminati.</string>
     <string name="device_import_clear_confirm_title">Eliminare i calendari importati?</string>
@@ -478,8 +491,12 @@
     <string name="backup_restore_confirm_action">Sostituisci</string>
     <string name="backup_working">Cifratura…</string>
     <string name="backup_working_sub">Qualche secondo: è il calcolo che protegge la sua password.</string>
-    <string name="backup_exported">Backup creato: %1$d evento/i.</string>
-    <string name="backup_restored">Ripristinati: %1$d calendario/i, %2$d evento/i, %3$d promemoria.</string>
+    <plurals name="backup_exported">
+        <item quantity="one">Backup creato: %1$d evento.</item>
+        <item quantity="many">Backup creato: %1$d di eventi.</item>
+        <item quantity="other">Backup creato: %1$d eventi.</item>
+    </plurals>
+    <string name="backup_restored">Ripristinati — calendari: %1$d, eventi: %2$d, promemoria: %3$d.</string>
     <string name="backup_bad_password">Password errata, o file danneggiato.</string>
     <string name="backup_not_a_backup">Questo file non è un backup di Agenda Tech.</string>
     <string name="backup_too_new">Questo backup è stato scritto da una versione più recente di Agenda Tech. Aggiorni l\'app per ripristinarlo — non elimini il file.</string>

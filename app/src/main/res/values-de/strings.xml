@@ -301,6 +301,7 @@
     <string name="settings_notif_sound_reset">Zurück zum Systemton</string>
     <string name="settings_notif_vibrate">Vibration</string>
     <string name="settings_notif_lockscreen">Auf dem Sperrbildschirm anzeigen</string>
+    <string name="settings_snooze">Schlummern für</string>
     <string name="settings_notif_system">Systemeinstellungen für Benachrichtigungen öffnen</string>
     <string name="settings_section_privacy">Datenschutz</string>
     <string name="settings_flag_secure">Bildschirmfotos blockieren</string>
@@ -402,9 +403,18 @@
     <string name="device_import_failed">Die Gerätekalender konnten nicht gelesen werden. Es wurde nichts geändert — versuchen Sie es erneut.</string>
     <string name="device_import_action">Importieren (%1$d)</string>
     <string name="device_import_running">Import läuft…</string>
-    <string name="device_import_done">%1$d Termine aus %2$d Kalender(n) importiert.</string>
-    <string name="device_import_partial">%1$d Termine aus %2$d Kalender(n) importiert. %3$d Kalender konnte(n) nicht gelesen werden.</string>
-    <string name="device_import_truncated">%1$d Termine aus %2$d Kalender(n) importiert. Die Auswahl enthielt mehr als die %3$d, die diese App pro Import annimmt — importieren Sie die übrigen Kalender einzeln.</string>
+    <plurals name="device_import_done">
+        <item quantity="one">%1$d Termin importiert. Gelesene Kalender: %2$d.</item>
+        <item quantity="other">%1$d Termine importiert. Gelesene Kalender: %2$d.</item>
+    </plurals>
+    <plurals name="device_import_partial">
+        <item quantity="one">%1$d Termin importiert. Gelesene Kalender: %2$d. Nicht lesbare Kalender: %3$d.</item>
+        <item quantity="other">%1$d Termine importiert. Gelesene Kalender: %2$d. Nicht lesbare Kalender: %3$d.</item>
+    </plurals>
+    <plurals name="device_import_truncated">
+        <item quantity="one">%1$d Termin importiert. Gelesene Kalender: %2$d. Die Auswahl enthielt mehr als die %3$d Termine, die diese App pro Import annimmt — importieren Sie die übrigen Kalender einzeln.</item>
+        <item quantity="other">%1$d Termine importiert. Gelesene Kalender: %2$d. Die Auswahl enthielt mehr als die %3$d Termine, die diese App pro Import annimmt — importieren Sie die übrigen Kalender einzeln.</item>
+    </plurals>
     <string name="device_import_clear">Zuvor importierte Kalender löschen</string>
     <string name="device_import_cleared">Importierte Kalender gelöscht.</string>
     <string name="device_import_clear_confirm_title">Importierte Kalender löschen?</string>
@@ -466,8 +476,11 @@
     <string name="backup_restore_confirm_action">Ersetzen</string>
     <string name="backup_working">Verschlüsselung…</string>
     <string name="backup_working_sub">Ein paar Sekunden: Diese Berechnung schützt Ihr Passwort.</string>
-    <string name="backup_exported">Sicherung erstellt: %1$d Termin(e).</string>
-    <string name="backup_restored">Wiederhergestellt: %1$d Kalender, %2$d Termin(e), %3$d Erinnerung(en).</string>
+    <plurals name="backup_exported">
+        <item quantity="one">Sicherung erstellt: %1$d Termin.</item>
+        <item quantity="other">Sicherung erstellt: %1$d Termine.</item>
+    </plurals>
+    <string name="backup_restored">Wiederhergestellt — Kalender: %1$d, Termine: %2$d, Erinnerungen: %3$d.</string>
     <string name="backup_bad_password">Falsches Passwort oder beschädigte Datei.</string>
     <string name="backup_not_a_backup">Diese Datei ist keine Sicherung von Agenda Tech.</string>
     <string name="backup_too_new">Diese Sicherung wurde von einer neueren Version von Agenda Tech geschrieben. Aktualisieren Sie die App, um sie wiederherzustellen — löschen Sie die Datei nicht.</string>

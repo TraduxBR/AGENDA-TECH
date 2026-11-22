@@ -263,7 +263,6 @@ class BackupViewModel @Inject constructor(
         pendingExportPassword?.wipe()
         pendingExportPassword = null
         pendingRestoreFile = null
-        super.onCleared()
     }
 
     fun export(uri: Uri, password: CharArray) = viewModelScope.launch {

@@ -41,7 +41,7 @@
         <item quantity="other">%1$d repeating events use a rule Agenda Tech cannot reproduce: only their first date was imported.</item>
     </plurals>
     <string name="ics_error">Couldn\'t read the calendar file</string>
-    <string name="ics_import_too_many">This file holds more events than the app accepts (%1$d maximum). Split it and import the parts.</string>
+    <string name="ics_import_too_many">This file holds more events than the app accepts (maximum: %1$d). Split it and import the parts.</string>
 
     <!-- Month view -->
     <string name="month_today">Today</string>
@@ -309,6 +309,9 @@
     <string name="settings_notif_sound_reset">Back to the system sound</string>
     <string name="settings_notif_vibrate">Vibrate</string>
     <string name="settings_notif_lockscreen">Show on lock screen</string>
+    <!-- Title of the snooze delay setting; the chosen delay ("10 min") shows next to it, and on the
+         notification's button (reminder_snooze). -->
+    <string name="settings_snooze">Snooze for</string>
     <string name="settings_notif_system">Open system notification settings</string>
     <string name="settings_section_privacy">Privacy</string>
     <string name="settings_flag_secure">Block screenshots</string>
@@ -412,9 +415,20 @@
     <string name="device_import_failed">The device calendars could not be read. Nothing was changed — try again.</string>
     <string name="device_import_action">Import (%1$d)</string>
     <string name="device_import_running">Importing…</string>
-    <string name="device_import_done">%1$d events imported from %2$d calendar(s).</string>
-    <string name="device_import_partial">%1$d events imported from %2$d calendar(s). %3$d calendar(s) could not be read.</string>
-    <string name="device_import_truncated">%1$d events imported from %2$d calendar(s). The selection held more than the %3$d this app accepts in one import — import the remaining calendars separately.</string>
+    <!-- One plural, on the number of events (%1$d); the other numbers follow a label, so each sentence
+         reads right whatever they are: an Android plural is chosen on one number only. -->
+    <plurals name="device_import_done">
+        <item quantity="one">%1$d event imported. Calendars read: %2$d.</item>
+        <item quantity="other">%1$d events imported. Calendars read: %2$d.</item>
+    </plurals>
+    <plurals name="device_import_partial">
+        <item quantity="one">%1$d event imported. Calendars read: %2$d. Calendars that could not be read: %3$d.</item>
+        <item quantity="other">%1$d events imported. Calendars read: %2$d. Calendars that could not be read: %3$d.</item>
+    </plurals>
+    <plurals name="device_import_truncated">
+        <item quantity="one">%1$d event imported. Calendars read: %2$d. The selection held more than the %3$d events this app accepts in one import — import the remaining calendars separately.</item>
+        <item quantity="other">%1$d events imported. Calendars read: %2$d. The selection held more than the %3$d events this app accepts in one import — import the remaining calendars separately.</item>
+    </plurals>
     <string name="device_import_clear">Delete previously imported calendars</string>
     <string name="device_import_cleared">Imported calendars deleted.</string>
     <string name="device_import_clear_confirm_title">Delete imported calendars?</string>
@@ -476,8 +490,12 @@
     <string name="backup_restore_confirm_action">Replace</string>
     <string name="backup_working">Encrypting…</string>
     <string name="backup_working_sub">A few seconds: this is the computation that protects your password.</string>
-    <string name="backup_exported">Backup created: %1$d event(s).</string>
-    <string name="backup_restored">Restored: %1$d calendar(s), %2$d event(s), %3$d reminder(s).</string>
+    <plurals name="backup_exported">
+        <item quantity="one">Backup created: %1$d event.</item>
+        <item quantity="other">Backup created: %1$d events.</item>
+    </plurals>
+    <!-- Three numbers: each follows its label, since a plural is chosen on one number only. -->
+    <string name="backup_restored">Restored — calendars: %1$d, events: %2$d, reminders: %3$d.</string>
     <string name="backup_bad_password">Wrong password, or damaged file.</string>
     <string name="backup_not_a_backup">This file is not an Agenda Tech backup.</string>
     <string name="backup_too_new">This backup was written by a newer version of Agenda Tech. Update the app to restore it — do not delete the file.</string>

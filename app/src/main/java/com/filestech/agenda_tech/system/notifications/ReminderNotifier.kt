@@ -23,7 +23,6 @@ import com.filestech.agenda_tech.domain.model.Event
 import com.filestech.agenda_tech.domain.repository.SettingsRepository
 import com.filestech.agenda_tech.domain.settings.AppSettings
 import com.filestech.agenda_tech.system.alarm.ReminderReceiver
-import com.filestech.agenda_tech.system.alarm.ReminderScheduler
 import com.filestech.agenda_tech.domain.birthday.birthdayDisplayTitle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.sync.Mutex
@@ -177,10 +176,15 @@ class ReminderNotifier @Inject constructor(
 
         // "Snooze" — the moment a reminder fires is exactly the moment you are busy. Without this the
         // choice is act now or lose the reminder.
+        //
+        // The delay rides on the button, read once here: the label and the alarm it arms then say the
+        // same thing even if the setting changes while the notification is on screen.
+        val snoozeMinutes = settingsRepository.current().snoozeMinutes
         val snoozeIntent = Intent(context, ReminderReceiver::class.java).apply {
             action = ReminderReceiver.ACTION_SNOOZE
             putExtra(ReminderReceiver.EXTRA_EVENT_ID, event.id)
             putExtra(ReminderReceiver.EXTRA_OCCURRENCE_START, occurrenceStartUtcMillis)
+            putExtra(ReminderReceiver.EXTRA_SNOOZE_MINUTES, snoozeMinutes)
         }
         val snoozePendingIntent = PendingIntent.getBroadcast(
             context,
@@ -217,7 +221,7 @@ class ReminderNotifier @Inject constructor(
             .setContentIntent(contentIntent)
             .addAction(
                 0,
-                context.getString(R.string.reminder_snooze, ReminderScheduler.SNOOZE_MINUTES),
+                context.getString(R.string.reminder_snooze, snoozeMinutes),
                 snoozePendingIntent,
             )
             .build()

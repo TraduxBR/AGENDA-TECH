@@ -10,6 +10,12 @@ versions selon [SemVer](https://semver.org/lang/fr/).
 - **Brazilian Portuguese**, contributed by TraduxBR (#55): every screen, notification and widget. On
   Android 13 and later it can also be chosen for Agenda Tech alone (Settings → Apps → Agenda Tech →
   Language).
+- **Snooze delay of your choice**: 5, 10, 15, 30 minutes or 1 hour (Settings → Reminder notifications).
+  Ten minutes stays the default, the delay every earlier version had. The delay is written on the
+  notification's button when it appears, so the button says what it will do even if the setting
+  changes meanwhile; a notification shown by the previous version keeps its ten minutes.
+- **Themed icon** (Android 13 and later): with themed icons turned on, the launcher icon takes the
+  colours of the wallpaper like the system's own apps — the four squares, the lettering cut out.
 
 ### Fixed
 
@@ -19,9 +25,23 @@ versions selon [SemVer](https://semver.org/lang/fr/).
   instead. Moving the start now moves the end with it, keeping the duration shown — the default one for
   a new event, the event's own when editing or after "Duplicate". It is counted on the clock, so an
   event moved across the change to summer or winter time still ends at the same hour.
+- **Counts read right with one**, in the six languages: "1 events imported from 1 calendar(s)" after
+  an import from the phone's calendar, "Backup created: 1 event(s)", "Restored: 1 calendar(s)…". A
+  count now takes its proper singular or plural; where a sentence holds several numbers, each follows
+  its label ("Calendars read: 2"), since a plural can only be chosen on one number.
 
 ### Changed
 
+- Lint: 47 warnings → 8, every one a version notice kept on purpose (below). Fixed: the plurals
+  above, KTX forms (`toUri`, `SharedPreferences.edit`, synchronous writes kept with `commit = true`),
+  the Android 13 checks made visible where lint looks for them, the widgets' Android 12 sizes
+  declared as such, and the launcher icon's monochrome layer.
+- Dependencies, aligned on what SMS Tech and Notes Tech already ship and F-Droid already rebuilt:
+  AGP 9.5.1, WorkManager 2.12.0 (frozen at 2.7.1 while the F-Droid inclusion request pinned a
+  commit), Glance 1.2.0, documentfile 1.1.0, SQLCipher 4.20.0, lifecycle 2.11.1, KSP 2.3.13. Kept on
+  purpose, each with its reason in `gradle/libs.versions.toml`: kotlinx-serialization 1.7.3 (it
+  writes the `.atbak` backup, whose format was verified independently), DataStore 1.1.1, Compose
+  BOM 2026.09.00 (the next one needs compileSdk 37.1), Kotlin 2.4.10 (CodeQL), targetSdk 35.
 - The translation check knows the plural categories of Portuguese, now fails on a language whose
   categories it does not know (it skipped its plurals without a word), and reads `locales_config.xml`
   in BCP 47 (`pt-BR`), the form Android parses — it expected `pt-rBR`, which Android reads as plain

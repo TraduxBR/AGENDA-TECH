@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -224,7 +225,7 @@ fun BackupScreen(
 
 @Composable
 private fun backupMessages(message: BackupMessage?): String? = when (message) {
-    is BackupMessage.Exported -> stringResource(R.string.backup_exported, message.events)
+    is BackupMessage.Exported -> pluralStringResource(R.plurals.backup_exported, message.events, message.events)
     is BackupMessage.Restored ->
         stringResource(R.string.backup_restored, message.calendars, message.events, message.reminders)
     BackupMessage.BadPasswordOrFile -> stringResource(R.string.backup_bad_password)
