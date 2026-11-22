@@ -43,11 +43,14 @@ internal sealed interface RRuleReading {
  * - `MONTHLY` by position: `BYDAY=2TU`, `BYDAY=-1FR`, or Outlook's `BYDAY=TU;BYSETPOS=2`; the last day,
  *   `BYMONTHDAY=-1`; and `BYMONTHDAY` naming the start's own day, which is the plain monthly rule;
  * - `DAILY;BYDAY=MO,TU,WE,TH,FR` (every day, but only those): the weekly rule on those days;
- * - `YEARLY` whose `BYMONTH` / `BYMONTHDAY` only repeat the start's month and day, as Outlook writes them.
+ * - `YEARLY` with `BYMONTH` naming the start's month, alone or with `BYMONTHDAY` naming its day, as
+ *   Outlook writes it.
  *
  * Anything else that selects dates is refused as a whole ([RRuleReading.FirstDateOnly]), never read in
- * part: a rule part ignored is a series on the wrong dates. `WKST` is ignored where it changes nothing,
- * which is everywhere but one case (see [spansWeekStart]).
+ * part: a rule part ignored is a series on the wrong dates. So are bounds it cannot read exactly — an
+ * `INTERVAL` out of range, a `COUNT` or `UNTIL` it cannot read — and more cancelled occurrences than
+ * [RecurrenceRule.MAX_EXDATES]. `WKST` is ignored where it changes nothing, which is everywhere but one
+ * case (see [spansWeekStart]).
  *
  * ## What it never does
  *
@@ -76,44 +79,79 @@ internal object RRuleReader {
      * the series will be expanded in, which is what a position in the month is counted against.
      *
      * [parseUntil] reads an `UNTIL` stamp the caller's way, returning null when it cannot; [exDatesUtcMillis]
-     * are the caller's cancelled occurrences, carried into the rule.
+     * are the caller's cancelled occurrences, carried into the rule — up to [RecurrenceRule.MAX_EXDATES].
      */
     fun read(
         value: String,
         start: LocalDate,
         exDatesUtcMillis: List<Long>,
         parseUntil: (String) -> Long?,
-    ): RRuleReading = runCatching { ruleOrNull(value, start, exDatesUtcMillis, parseUntil) }
-        .getOrNull()
-        ?.let(RRuleReading::Reproduced)
-        ?: RRuleReading.FirstDateOnly
+    ): RRuleReading {
+        // Refused whole rather than cut down to the cap: a cancellation dropped is an occurrence brought
+        // back. Duplicates are one cancellation, so they are counted once (and stored once).
+        val exDates = exDatesUtcMillis.distinct().takeIf { it.size <= RecurrenceRule.MAX_EXDATES }
+            ?: return RRuleReading.FirstDateOnly
+        return runCatching { ruleOrNull(value, start, exDates, parseUntil) }
+            .getOrNull()
+            ?.let(RRuleReading::Reproduced)
+            ?: RRuleReading.FirstDateOnly
+    }
 
     private fun ruleOrNull(
         value: String,
         start: LocalDate,
-        exDatesUtcMillis: List<Long>,
+        exDates: List<Long>,
         parseUntil: (String) -> Long?,
     ): RecurrenceRule? {
         val parts = partsOf(value)?.takeIf { parts -> parts.keys.all { it in UNDERSTOOD } } ?: return null
-        // Clamped rather than refused, as both imports always did (audit F1): an absurd INTERVAL is a
-        // file to survive, and it has a test of its own.
-        val interval = parts["INTERVAL"]?.toIntOrNull()?.coerceIn(1, RecurrenceRule.MAX_INTERVAL) ?: 1
-        val shape = shapeOf(parts, interval, start) ?: return null
-        // COUNT is filtered BEFORE deciding UNTIL: a COUNT of 0 is not a bound, so it must not suppress a
-        // perfectly good UNTIL on its way to being discarded itself — that dropped both bounds and turned a
-        // finite series infinite. COUNT and UNTIL together are not a valid RRULE; COUNT wins, so the same
-        // file reads the same way through either import.
-        val count = parts["COUNT"]?.toIntOrNull()?.takeIf { it >= 1 }
-        val until = if (count == null) parts["UNTIL"]?.let(parseUntil) else null
-        return RecurrenceRule(
-            freq = shape.freq,
-            interval = interval,
-            byWeekdays = shape.byWeekdays,
-            count = count,
-            untilUtcMillis = until,
-            exDatesUtcMillis = exDatesUtcMillis,
-            monthly = shape.monthly,
-        )
+        val interval = intervalOf(parts) ?: return null
+        val bounds = boundsOf(parts, parseUntil) ?: return null
+        return shapeOf(parts, interval, start)?.let { shape ->
+            RecurrenceRule(
+                freq = shape.freq,
+                interval = interval,
+                byWeekdays = shape.byWeekdays,
+                count = bounds.count,
+                untilUtcMillis = bounds.untilUtcMillis,
+                exDatesUtcMillis = exDates,
+                monthly = shape.monthly,
+            )
+        }
+    }
+
+    /**
+     * `INTERVAL`, 1 when absent; null when present but not a whole number in 1..[RecurrenceRule.MAX_INTERVAL].
+     *
+     * Both imports used to clamp it — `INTERVAL=1000` became 999, `INTERVAL=0` became 1 — which is a series
+     * on other dates than the file's. Audit F1's concern, an interval that made the expander throw, is met
+     * just as well by refusing: a first date only never throws either.
+     */
+    private fun intervalOf(parts: Map<String, String>): Int? {
+        val text = parts["INTERVAL"] ?: return 1
+        return text.toIntOrNull()?.takeIf { it in 1..RecurrenceRule.MAX_INTERVAL }
+    }
+
+    /** The end of a series: at most one of the two, both null for an endless one. */
+    private class Bounds(val count: Int?, val untilUtcMillis: Long?)
+
+    /**
+     * The series' end, or null when the rule names one this reader cannot read — then the series would run
+     * on for ever where the file meant it to stop.
+     *
+     * COUNT and UNTIL together are not a valid RRULE; a valid COUNT wins, so the same file reads the same
+     * way through either import. A COUNT that is not a whole number ≥ 1 is no bound, and it must not take a
+     * perfectly good UNTIL down with it — that once turned a finite series infinite. Alone, though, it is
+     * refused: `COUNT=0` is a set holding the start only (RFC 5545), and `COUNT=abc` says nothing. An UNTIL
+     * that decides the end but cannot be read is refused too: read as no bound, the series never ended.
+     */
+    private fun boundsOf(parts: Map<String, String>, parseUntil: (String) -> Long?): Bounds? {
+        val countText = parts["COUNT"]
+        val untilText = parts["UNTIL"]
+        val count = countText?.toIntOrNull()?.takeIf { it >= 1 }
+        val until = if (count == null) untilText?.let(parseUntil) else null
+        // No bound read, though the rule named one: an unreadable UNTIL, or a COUNT that is no bound.
+        val namedButUnread = count == null && until == null && (countText != null || untilText != null)
+        return if (namedButUnread) null else Bounds(count, until)
     }
 
     /** The frequency and the days the rule selects, or null when this app cannot follow them. */
@@ -210,11 +248,18 @@ internal object RRuleReader {
             return rule?.takeIf { it in monthlyRulesThrough(start) }?.let { Shape(RecurrenceFreq.MONTHLY, monthly = it) }
         }
 
-        /** `YEARLY`, on the start's day — `BYMONTH` and `BYMONTHDAY` accepted only where they repeat it. */
-        fun yearly(start: LocalDate): Shape? = Shape(RecurrenceFreq.YEARLY).takeIf {
-            byDay == null && bySetPos == null &&
-                (byMonth == null || byMonth == listOf(start.monthValue)) &&
-                (byMonthDay == null || byMonthDay == listOf(start.dayOfMonth))
+        /**
+         * `YEARLY`, on the start's day — `BYMONTH` accepted where it repeats the start's month, and
+         * `BYMONTHDAY` only beside it, as Outlook writes a yearly event. Alone, `BYMONTHDAY` is not the
+         * start's day once a year: RFC 5545 expands it within the year, so `FREQ=YEARLY;BYMONTHDAY=15` is
+         * the 15th of EVERY month.
+         */
+        fun yearly(start: LocalDate): Shape? {
+            val sameMonth = byMonth == listOf(start.monthValue)
+            val accepted = byDay == null && bySetPos == null &&
+                (byMonth == null || sameMonth) &&
+                (byMonthDay == null || (sameMonth && byMonthDay == listOf(start.dayOfMonth)))
+            return Shape(RecurrenceFreq.YEARLY).takeIf { accepted }
         }
 
         /** "The [rank]-th [weekday]", when this app can follow it: 1 to 5, or the last one. */

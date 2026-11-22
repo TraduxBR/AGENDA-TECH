@@ -2,6 +2,9 @@ package com.filestech.agenda_tech.domain.usecase
 
 import com.filestech.agenda_tech.domain.ImportLimits
 import com.filestech.agenda_tech.domain.model.Calendar
+import com.filestech.agenda_tech.domain.model.Event
+import com.filestech.agenda_tech.domain.model.RecurrenceFreq
+import com.filestech.agenda_tech.domain.model.RecurrenceRule
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -109,6 +112,54 @@ class ImportEventsUseCaseTest {
         // Taken as their first date: in the agenda, as single events.
         assertThat(events.rows.values.filter { it.recurrence == null }.map { it.title })
             .containsExactly("Une fois", "RDV by-week-number", "RDV hourly")
+    }
+
+    @Test
+    fun `a series re-imported under a rule taken as its first date stays as it was, overrides included`() = runTest {
+        // Updating it would make it a single event: its cancelled occurrence gone, and the occurrence
+        // moved here pointing at a row that no longer repeats. Nothing would undo that.
+        val calendarId = calendars.upsert(Calendar(name = "Perso", isDefault = true))
+        val cancelled = 1_764_320_400_000L
+        val master = Event(
+            id = 50,
+            calendarId = calendarId,
+            title = "Cours",
+            startUtcMillis = 1_763_715_600_000L, // 21 Nov 2025 09:00 UTC, the file's DTSTART
+            endUtcMillis = 1_763_719_200_000L,
+            timeZoneId = "UTC",
+            recurrence = RecurrenceRule(RecurrenceFreq.WEEKLY, exDatesUtcMillis = listOf(cancelled)),
+            sourceUid = "ics:serie@example.com",
+        )
+        val moved = Event(
+            id = 51,
+            calendarId = calendarId,
+            title = "Cours déplacé",
+            startUtcMillis = 1_764_928_800_000L,
+            endUtcMillis = 1_764_932_400_000L,
+            timeZoneId = "UTC",
+            recurrenceParentId = 50,
+            originalStartUtcMillis = 1_764_925_200_000L,
+        )
+        events.rows[50] = master
+        events.rows[51] = moved
+        val file = ics(vevent("serie@example.com", "Cours renommé").replace("END:VEVENT", "RRULE:FREQ=YEARLY;BYWEEKNO=47\nEND:VEVENT"))
+
+        val result = useCase(file, ZONE)
+
+        assertThat(events.rows).containsExactly(50L, master, 51L, moved)
+        assertThat(result).isEqualTo(ImportEventsUseCase.Result(imported = 0, firstDateOnly = 1))
+    }
+
+    @Test
+    fun `a single event re-imported under a rule taken as its first date is updated as before`() = runTest {
+        // The other half: only a SERIES is spared, since only a series loses something to the update.
+        calendars.upsert(Calendar(name = "Perso", isDefault = true))
+        useCase(ics(vevent("u1", "Avant")), ZONE)
+
+        useCase(ics(vevent("u1", "Après").replace("END:VEVENT", "RRULE:FREQ=HOURLY\nEND:VEVENT")), ZONE)
+
+        assertThat(events.rows.values.single().title).isEqualTo("Après")
+        assertThat(events.rows.values.single().recurrence).isNull()
     }
 
     @Test

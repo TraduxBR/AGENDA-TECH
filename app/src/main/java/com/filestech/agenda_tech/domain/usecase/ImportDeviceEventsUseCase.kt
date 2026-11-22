@@ -187,7 +187,14 @@ class ImportDeviceEventsUseCase @Inject constructor(
                     // would be re-inserted as a duplicate (audit U1).
                     val existingId = withEx.sourceUid?.let { existing[it] }
                         ?: existing[DeviceEventMapper.rowIdUid(de.deviceId)]
-                    if (existingId != null) withEx.copy(id = existingId) else withEx
+                    // The stored row is read only for a rule taken as its first date — rare — and the
+                    // answer is the .ics import's own (keepsStoredSeries): a series stays as it was.
+                    val stored = if (existingId != null && taken.firstDateOnly) eventRepository.getById(existingId) else null
+                    when {
+                        stored != null && keepsStoredSeries(stored, taken.firstDateOnly) -> null
+                        existingId != null -> withEx.copy(id = existingId)
+                        else -> withEx
+                    }
                 }
                 eventRepository.upsertAll(mapped) // atomic batch — all rows or none
                 CalendarOutcome(

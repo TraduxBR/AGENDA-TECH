@@ -74,6 +74,20 @@ data class RecurrenceRule(
          * enforced in [init] rather than left to callers.
          */
         const val MAX_INTERVAL = 999
+
+        /**
+         * Most cancelled occurrences ([exDatesUtcMillis]) an IMPORT takes in one rule.
+         *
+         * They are stored as one comma-separated TEXT cell. A crafted 5 MiB `.ics` can carry some 300 000
+         * distinct EXDATEs: a cell over 2 MB, past what an Android CursorWindow holds, so every query that
+         * reads the row fails — the app crashes at every launch, with no way to reach the event. 5 000 is
+         * some 70 kB of text, far above any real series (a daily one cancelled every day for 13 years).
+         *
+         * Enforced by the import's reader, which refuses the rule whole rather than cutting the list (a
+         * cancellation dropped is an occurrence brought back), and deliberately NOT in [init]: a row or a
+         * backup of the user's own must never become unreadable because of it.
+         */
+        const val MAX_EXDATES = 5_000
     }
 }
 

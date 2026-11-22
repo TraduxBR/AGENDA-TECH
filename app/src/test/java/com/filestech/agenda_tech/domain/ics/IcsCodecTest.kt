@@ -219,11 +219,13 @@ class IcsCodecTest {
     // --- Audit F1/F5/F7 — the import paths must bound INTERVAL --------------
 
     @Test
-    fun `an absurd RRULE INTERVAL is clamped on import and survives expansion`() {
-        // Audit F1/F5/F7. Unclamped, this interval made the YEARLY branch of the expander compute a
+    fun `an absurd RRULE INTERVAL is taken as the first date only, and survives expansion`() {
+        // Audit F1/F5/F7. Read as is, this interval made the YEARLY branch of the expander compute a
         // year past YearMonth's +/-999,999,999 limit and throw a DateTimeException on the render path
         // of every view and of the widget — one imported event was enough to crash the app on every
-        // launch, with no in-app way to reach and delete it.
+        // launch, with no in-app way to reach and delete it. It used to be clamped to 999, which no
+        // longer crashed but put the series on other years than the file's; it is now refused, which
+        // does not crash either: the event keeps its first date, and the import says so.
         val text = buildString {
             append("BEGIN:VCALENDAR\r\n")
             append("BEGIN:VEVENT\r\n")
@@ -236,9 +238,10 @@ class IcsCodecTest {
         }
 
         val decoded = IcsCodec.decode(text, paris).single()
-        assertThat(decoded.recurrence?.interval).isEqualTo(RecurrenceRule.MAX_INTERVAL)
+        assertThat(decoded.recurrence).isNull()
+        assertThat(decoded.firstDateOnly).isTrue()
 
-        // The point of the bound: expanding the imported event no longer throws.
+        // The point of audit F1: expanding the imported event does not throw.
         val event = decoded.toEvent(calendarId = 1)
         val occurrences = RecurrenceExpander().expand(
             event,
@@ -249,15 +252,16 @@ class IcsCodecTest {
     }
 
     @Test
-    fun `a COUNT below 1 drops the bound instead of the whole recurrence`() {
-        // RecurrenceRule requires COUNT >= 1, and parseRRule is wrapped in runCatching: throwing here
-        // stripped the recurrence from an otherwise perfectly good event, silently turning a repeating
-        // appointment into a one-off.
+    fun `a COUNT below 1 with no other bound is taken as the first date, and said`() {
+        // RecurrenceRule requires COUNT >= 1, and parseRRule was wrapped in runCatching: throwing here
+        // stripped the recurrence from the event WITHOUT A WORD. It then dropped the bound instead, which
+        // made the series endless — while RFC 5545's set for COUNT=0 is the start alone. Now the event
+        // keeps its first date and the import counts it. (With a good UNTIL beside it, COUNT=0 does not
+        // take the UNTIL down: see DeviceEventMapperTest and RRuleReaderTest.)
         val decoded = IcsCodec.decode(icsWithRRule("FREQ=WEEKLY;COUNT=0"), paris).single()
 
-        assertThat(decoded.recurrence).isNotNull()
-        assertThat(decoded.recurrence?.freq).isEqualTo(RecurrenceFreq.WEEKLY)
-        assertThat(decoded.recurrence?.count).isNull()
+        assertThat(decoded.recurrence).isNull()
+        assertThat(decoded.firstDateOnly).isTrue()
     }
 
     @Test

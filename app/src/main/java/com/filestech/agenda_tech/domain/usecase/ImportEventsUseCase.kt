@@ -109,16 +109,20 @@ class ImportEventsUseCase @Inject constructor(
         // laisserait deux VEVENT la revendiquer chacun par la sienne. Pour une seule cle, c'est le meme
         // appariement.
         val claimed = HashSet<Long>()
-        val mapped = parsed.map { icsEvent ->
+        val mapped = parsed.mapNotNull { icsEvent ->
             val row = icsEvent.uid?.let { uid -> existing[uid]?.firstOrNull { it.id !in claimed } }
-            if (row != null) {
-                claimed += row.id
-                row.updatedFrom(icsEvent, placesWritten = listOf(row.location, EventShare.place(row)))
-            } else {
-                icsEvent.toEvent(targetId)
+            when {
+                row == null -> icsEvent.toEvent(targetId)
+                // Still claimed, so no other VEVENT of that UID takes it — but left as it is.
+                keepsStoredSeries(row, icsEvent.firstDateOnly) -> null.also { claimed += row.id }
+                else -> {
+                    claimed += row.id
+                    row.updatedFrom(icsEvent, placesWritten = listOf(row.location, EventShare.place(row)))
+                }
             }
         }
         eventRepository.upsertAll(mapped) // PERF-1 — single atomic batch, not N transactions
+        // Every VEVENT taken as its first date is counted, the ones that left a stored series as it was included.
         return@withLock Result(imported = mapped.size, firstDateOnly = parsed.count { it.firstDateOnly })
     }
 
