@@ -16,7 +16,12 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
+import java.time.Duration
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.util.TimeZone
 
 /**
  * The editor's save/delete paths — the most-walked code in the app, and the one that had no net.
@@ -426,6 +431,92 @@ internal class EventEditorViewModelTest : EventEditorTestBase() {
         assertThat(vm.state.value.reminderMinutes).containsExactly(30)
     }
 
+    @Test
+    fun `a new event lasts the default duration, wherever its start is moved`() = runTest(dispatcher) {
+        // Reported by a user on 1.3.4 (2026-11-22): with 15 minutes set, every new event ended an hour
+        // after its start. The default was applied to the 09:00 the form opens on; choosing the real start
+        // then left the end before it, and withStart replaced that end with a hard-coded hour.
+        settingsRepo.update { it.copy(defaultDurationMinutes = 15) }
+        val vm = viewModel()
+        testScheduler.advanceUntilIdle()
+        fun shownDuration() = Duration.between(vm.state.value.startDateTime, vm.state.value.endDateTime)
+        assertThat(shownDuration()).isEqualTo(Duration.ofMinutes(15))
+
+        vm.onStartTimeChange(14, 0)
+        assertThat(shownDuration()).isEqualTo(Duration.ofMinutes(15))
+        // Before the end the form opened with: that end used to stay where it was, giving 1 h 15 min.
+        vm.onStartTimeChange(8, 0)
+        assertThat(shownDuration()).isEqualTo(Duration.ofMinutes(15))
+        vm.onStartDateChange(LocalDate.of(2026, 12, 24))
+        assertThat(shownDuration()).isEqualTo(Duration.ofMinutes(15))
+    }
+
+    @Test
+    fun `moving the start of an event keeps its duration`() = runTest(dispatcher) {
+        seedEvent(id = 10) // 09:00–10:00
+        val vm = viewModel(eventId = 10)
+        testScheduler.advanceUntilIdle()
+
+        // Earlier, not later: a later start found the end before it and got the hard-coded hour, which
+        // for this one-hour event looked right by chance. An earlier start kept 10:00 — two hours.
+        vm.onStartTimeChange(8, 0)
+        vm.onSave()
+        testScheduler.advanceUntilIdle()
+
+        val saved = eventRepo.rows.getValue(10)
+        assertThat(saved.startUtcMillis).isEqualTo(at(2026, 7, 20, 8))
+        assertThat(saved.endUtcMillis).isEqualTo(at(2026, 7, 20, 9))
+    }
+
+    @Test
+    fun `an end typed before the start is kept if the start moves before it, else the default applies`() =
+        runTest(dispatcher) {
+            // The form can be filled end first: 09:00 → 08:00 is no duration to carry over, but it is an
+            // end the user chose, and a start moved before it makes it valid.
+            settingsRepo.update { it.copy(defaultDurationMinutes = 15) }
+            val vm = viewModel()
+            testScheduler.advanceUntilIdle()
+
+            vm.onEndTimeChange(8, 0)
+            vm.onStartTimeChange(7, 0)
+            assertThat(vm.state.value.endDateTime.toLocalTime()).isEqualTo(LocalTime.of(8, 0))
+
+            // Still before the new start: nothing of it can be kept, so the user's default is used.
+            vm.onEndTimeChange(6, 0)
+            vm.onStartTimeChange(10, 0)
+            assertThat(vm.state.value.endDateTime.toLocalTime()).isEqualTo(LocalTime.of(10, 15))
+        }
+
+    @Test
+    fun `a span across the change to winter time still ends at the same hour once moved`() = runTest(dispatcher) {
+        // The duration is carried over on the clock, not in elapsed time. Saturday 10:00 → Monday 10:00
+        // across the last Sunday of October is two days on the clock but 49 hours elapsed: carrying the
+        // 49 hours would end the event moved one day later at 11:00. The editor reads the phone's zone
+        // when it is built, so Paris is set here — in UTC, where CI runs, there is no change to cross.
+        val previous = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("Europe/Paris"))
+        try {
+            val paris = ZoneId.of("Europe/Paris")
+            val vm = viewModel()
+            testScheduler.advanceUntilIdle()
+            vm.onTitleChange("Séminaire")
+            vm.onStartDateChange(LocalDate.of(2026, 10, 24))
+            vm.onStartTimeChange(10, 0)
+            vm.onEndDateChange(LocalDate.of(2026, 10, 26))
+            vm.onEndTimeChange(10, 0)
+
+            vm.onStartDateChange(LocalDate.of(2026, 10, 25))
+            vm.onSave()
+            testScheduler.advanceUntilIdle()
+
+            val saved = eventRepo.rows.values.single()
+            assertThat(saved.endUtcMillis)
+                .isEqualTo(ZonedDateTime.of(2026, 10, 27, 10, 0, 0, 0, paris).toInstant().toEpochMilli())
+        } finally {
+            TimeZone.setDefault(previous)
+        }
+    }
+
     // --- EXDATE : une annulation ne doit pas survivre à un renommage de série ------
 
     @Test
@@ -624,9 +715,9 @@ internal class EventEditorViewModelTest : EventEditorTestBase() {
 
     @Test
     fun `moving a birth date to a later year does not stretch the birthday`() = runTest(dispatcher) {
-        // Without the special case in withStart, the generic rule keeps the old end whenever it is not
-        // before the new start — so pushing the birth date forward would leave an all-day event
-        // spanning every day in between, silently filling years of the agenda.
+        // Before withStart carried the span over, its generic rule kept the old end whenever it was not
+        // before the new start — so pushing the birth date forward left an all-day event spanning every
+        // day in between, silently filling years of the agenda.
         val vm = viewModel()
         testScheduler.advanceUntilIdle()
         vm.onKindChange(EventKind.BIRTHDAY)

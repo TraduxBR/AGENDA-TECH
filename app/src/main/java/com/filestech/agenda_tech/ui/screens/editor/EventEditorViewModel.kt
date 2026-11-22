@@ -22,6 +22,7 @@ import com.filestech.agenda_tech.domain.repository.CalendarRepository
 import com.filestech.agenda_tech.domain.repository.EventRepository
 import com.filestech.agenda_tech.domain.repository.ReminderRepository
 import com.filestech.agenda_tech.domain.repository.SettingsRepository
+import com.filestech.agenda_tech.domain.settings.AppSettings
 import com.filestech.agenda_tech.domain.share.EventShare
 import com.filestech.agenda_tech.domain.share.ShareSource
 import com.filestech.agenda_tech.domain.usecase.DeleteEventUseCase
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -145,6 +147,12 @@ class EventEditorViewModel @Inject constructor(
     /** The zone an all-day event's dates are turned into instants in — see [loadedAllDayZone]. */
     private val allDayZone: ZoneId get() = loadedAllDayZone ?: zone
 
+    /**
+     * The user's default duration, read once when the editor opens, for a new event and an edited one
+     * alike: a new event is given it, and [withStart] falls back on it when the form holds no span.
+     */
+    private var defaultDuration: Duration = Duration.ofMinutes(AppSettings.DEFAULT_DURATION_MINUTES.toLong())
+
     private val _state = MutableStateFlow(initialState())
     val state: StateFlow<EventEditorUiState> = _state.asStateFlow()
 
@@ -162,20 +170,21 @@ class EventEditorViewModel @Inject constructor(
                         ?: defaultCalendarId(calendars),
                 )
             }
+            val settings = settingsRepository.current()
+            defaultDuration = Duration.ofMinutes(settings.defaultDurationMinutes.toLong())
             if (eventId > 0L) {
                 loadEvent(eventId)
             } else {
-                applyDefaults()
+                applyDefaults(settings)
             }
         }
     }
 
     /** For a new event, seed duration / reminder / colour from the user's default settings. */
-    private suspend fun applyDefaults() {
-        val settings = settingsRepository.current()
+    private fun applyDefaults(settings: AppSettings) {
         _state.update { current ->
             current.copy(
-                endDateTime = current.startDateTime.plusMinutes(settings.defaultDurationMinutes.toLong()),
+                endDateTime = current.startDateTime.plus(defaultDuration),
                 colorOverride = settings.defaultEventColor,
                 reminderMinutes = if (settings.defaultReminderMinutes >= 0) {
                     listOf(settings.defaultReminderMinutes)
@@ -751,13 +760,28 @@ class EventEditorViewModel @Inject constructor(
     }
 
     private fun EventEditorUiState.withStart(newStart: LocalDateTime): EventEditorUiState {
-        // A birthday has no end of its own — it is the one day. Left to the generic rule below, moving
-        // the birth date to a LATER year would keep the old end and silently make the event span every
+        // A birthday has no end of its own — it is the one day: its end is put on its start, whatever span
+        // the form holds, rather than carried over by the generic rule below. Before that rule carried the
+        // span, it kept the old end, and moving the birth date to a LATER year made the event span every
         // day in between, since an all-day end is inclusive.
         if (kind == EventKind.BIRTHDAY) {
             return copy(startDateTime = newStart, endDateTime = newStart, error = null)
         }
-        val newEnd = if (endDateTime.isBefore(newStart)) newStart.plusHours(1) else endDateTime
+        // The end follows the start, so the duration the form shows is kept — the user's default, for a
+        // new event. The end used to stay where it was, unless it fell before the new start, which then got
+        // a hard-coded hour: a new event opens at 09:00, so choosing any later start lost the default
+        // duration (reported on 1.3.4, 2026-11-22), and an earlier one stretched the event.
+        //
+        // Counted on the clock (LocalDateTime), not in elapsed time: across a change of summer/winter time,
+        // an event moved by a day must end at the same hour, not one hour off.
+        val span = Duration.between(startDateTime, endDateTime)
+        val newEnd = when {
+            !span.isNegative -> newStart.plus(span)
+            // An end typed before the start is no span to carry over, but it is the user's own end: kept
+            // once the start comes before it, replaced by the default duration otherwise.
+            endDateTime.isBefore(newStart) -> newStart.plus(defaultDuration)
+            else -> endDateTime
+        }
         return copy(startDateTime = newStart, endDateTime = newEnd, error = null)
     }
 
