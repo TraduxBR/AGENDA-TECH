@@ -10,6 +10,10 @@ versions selon [SemVer](https://semver.org/lang/fr/).
 - **Brazilian Portuguese**, contributed by TraduxBR (#55): every screen, notification and widget. On
   Android 13 and later it can also be chosen for Agenda Tech alone (Settings → Apps → Agenda Tech →
   Language).
+- **Snooze delay of your choice**: 5, 10, 15, 30 minutes or 1 hour (Settings → Reminder notifications).
+  Ten minutes stays the default, the delay every earlier version had. The delay is written on the
+  notification's button when it appears, so the button says what it will do even if the setting
+  changes meanwhile; a notification shown by the previous version keeps its ten minutes.
 
 ### Fixed
 

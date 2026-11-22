@@ -265,6 +265,7 @@
     <string name="settings_notif_sound_reset">Revenir au son du système</string>
     <string name="settings_notif_vibrate">Vibreur</string>
     <string name="settings_notif_lockscreen">Afficher sur l\'écran de verrouillage</string>
+    <string name="settings_snooze">Répéter le rappel dans</string>
     <string name="settings_notif_system">Ouvrir les réglages système de notification</string>
     <string name="settings_section_privacy">Confidentialité</string>
     <string name="settings_flag_secure">Bloquer les captures d\'écran</string>

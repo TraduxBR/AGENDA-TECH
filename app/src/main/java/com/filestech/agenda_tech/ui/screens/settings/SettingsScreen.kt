@@ -230,6 +230,12 @@ fun SettingsScreen(
                 checked = settings.notifLockScreen,
                 onCheckedChange = viewModel::setNotifLockScreen,
             )
+            ChoiceRow(
+                title = stringResource(R.string.settings_snooze),
+                currentLabel = durationLabel(context, settings.snoozeMinutes),
+                options = AppSettings.SNOOZE_OPTIONS.map { it to durationLabel(context, it) },
+                onSelect = viewModel::setSnoozeMinutes,
+            )
             ClickRow(
                 title = stringResource(R.string.settings_notif_system),
                 onClick = { openAppNotificationSettings(context) },

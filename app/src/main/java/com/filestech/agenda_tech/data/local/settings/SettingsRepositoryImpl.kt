@@ -62,6 +62,9 @@ class SettingsRepositoryImpl @Inject constructor(
         notifSoundUri = this[Keys.NOTIF_SOUND_URI],
         notifVibrate = this[Keys.NOTIF_VIBRATE] ?: true,
         notifLockScreen = this[Keys.NOTIF_LOCKSCREEN] ?: true,
+        snoozeMinutes = AppSettings.snoozeMinutesOrDefault(
+            this[Keys.SNOOZE_MINUTES] ?: AppSettings.DEFAULT_SNOOZE_MINUTES,
+        ),
     )
 
     private fun MutablePreferences.writeAppSettings(settings: AppSettings) {
@@ -97,6 +100,7 @@ class SettingsRepositoryImpl @Inject constructor(
             ?: remove(Keys.NOTIF_SOUND_URI)
         this[Keys.NOTIF_VIBRATE] = settings.notifVibrate
         this[Keys.NOTIF_LOCKSCREEN] = settings.notifLockScreen
+        this[Keys.SNOOZE_MINUTES] = settings.snoozeMinutes
     }
 
     private object Keys {
@@ -121,5 +125,6 @@ class SettingsRepositoryImpl @Inject constructor(
         val NOTIF_SOUND_URI = stringPreferencesKey("notif_sound_uri")
         val NOTIF_VIBRATE = booleanPreferencesKey("notif_vibrate")
         val NOTIF_LOCKSCREEN = booleanPreferencesKey("notif_lockscreen")
+        val SNOOZE_MINUTES = intPreferencesKey("snooze_minutes")
     }
 }

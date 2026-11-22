@@ -53,12 +53,15 @@ class ReminderReceiver : BroadcastReceiver() {
         val reminderId = intent.getLongExtra(EXTRA_REMINDER_ID, -1L)
         val eventId = intent.getLongExtra(EXTRA_EVENT_ID, -1L)
         val occurrenceStart = intent.getLongExtra(EXTRA_OCCURRENCE_START, -1L)
+        // Absent from a notification posted before the delay became a setting: the handler then uses the
+        // default, the fixed delay of that version.
+        val snoozeMinutes = intent.getIntExtra(EXTRA_SNOOZE_MINUTES, -1)
         if (eventId < 0L) return
 
         val pendingResult = goAsync()
         scope.launch {
             try {
-                handler.get().handle(action, reminderId, eventId, occurrenceStart)
+                handler.get().handle(action, reminderId, eventId, occurrenceStart, snoozeMinutes)
             } catch (t: Throwable) {
                 Timber.w(t, "ReminderReceiver: failed handling %s for event %d", action, eventId)
             } finally {
@@ -78,5 +81,8 @@ class ReminderReceiver : BroadcastReceiver() {
         const val EXTRA_REMINDER_ID = "reminderId"
         const val EXTRA_EVENT_ID = "eventId"
         const val EXTRA_OCCURRENCE_START = "occurrenceStart"
+
+        /** The snooze delay shown on the button that carries it — see ReminderNotifier.postReminder. */
+        const val EXTRA_SNOOZE_MINUTES = "snoozeMinutes"
     }
 }
