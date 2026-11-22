@@ -74,8 +74,15 @@ class ExportBackupUseCase @Inject constructor(
         }
 
         val plaintext = json.toByteArray(Charsets.UTF_8)
+        // Decided here, where the payload is known — the automatic backup goes through this same path.
+        // A file an older build would restore wrong is sealed so that the older build refuses it.
+        val envelopeVersion = if (BackupCodec.holdsMonthlyPositions(payload)) {
+            BackupEnvelope.ENVELOPE_V2
+        } else {
+            BackupEnvelope.ENVELOPE_V1
+        }
         try {
-            envelope.seal(password, plaintext).map { bytes ->
+            envelope.seal(password, plaintext, envelopeVersion).map { bytes ->
                 Export(bytes = bytes, calendars = payload.calendars.size, events = payload.events.size)
             }
         } finally {

@@ -70,10 +70,15 @@ data class BackupEvent(
      * for the day number.
      *
      * Added without bumping [BackupPayload.FORMAT_VERSION], the way [kindRaw] was: a file written before
-     * them has neither key and restores every monthly series on its day number, which is what it was. The
-     * other direction is the cost, and it is the same as for birthdays: a build that predates them skips
-     * the keys (`ignoreUnknownKeys`) and restores "the second Tuesday" as the day number of its start.
-     * Refusing the file there instead would leave someone restoring an older build with no agenda at all.
+     * them has neither key and restores every monthly series on its day number, which is what it was.
+     *
+     * The other direction is not a birthday's, though. A build that predates them skips the keys
+     * (`ignoreUnknownKeys`) and would restore "the second Tuesday" on the day number of its start — wrong
+     * dates, where a missing birthday cake is only a missing label. And an inner version bump would not
+     * help: 1.3.4 reads any payload it refuses as "wrong password, or damaged file", which invites deleting
+     * it. So a file that holds a position is sealed in envelope version 2 ([BackupCodec.holdsMonthlyPositions],
+     * `ExportBackupUseCase`), which 1.3.4 answers with "written by a newer version: update the app, do not
+     * delete the file". Every other file stays version 1 and still restores in an older build.
      */
     val rruleMonthlyOrdinal: Int? = null,
     val rruleMonthlyWeekdayIso: Int? = null,
