@@ -21,7 +21,13 @@ lifecycle = "2.11.1"
 navigation-compose = "2.10.2"
 room = "2.8.5"
 # Alignee sur kotlinx-serialization-core deja resolu transitivement (lifecycle) : evite un conflit.
+# Gardée en 1.7.3 exprès : elle écrit le .atbak, dont le format a été vérifié contre une implémentation
+# Python indépendante (audit H3) — raison complète dans app/build.gradle.kts, près de kspAndroidTest.
 kotlinxSerialization = "1.7.3"
+# Gardée en 1.1.1 : la 1.3.0 (mesurée le 2026-11-22) ne sait plus remplacer son fichier par renommage sur
+# un poste Windows — « Unable to rename settings.preferences_pb.tmp » dès la deuxième écriture des tests
+# SettingsRepositoryImpl*Test, sur le vrai fichier. Android (POSIX) n'est pas touché, mais la barrière
+# locale le serait, et la 1.3 n'apporte rien ici.
 datastore = "1.1.1"
 biometric = "1.1.0"
 splashscreen = "1.2.0"
@@ -34,18 +40,20 @@ hilt-navigation-compose = "1.4.0"
 # Coroutines
 coroutines = "1.11.0"
 
-# SQLCipher — base chiffrée at-rest (embarque sa propre SQLite).
-sqlcipher = "4.19.1"
+# SQLCipher — base chiffrée at-rest (embarque sa propre SQLite). 4.20.0, comme Notes Tech ; une mise à
+# jour par-dessus la version publiée, base remplie, se vérifie sur appareil avant chaque release.
+sqlcipher = "4.20.0"
 
 # Glance (home-screen widget)
-glance = "1.1.1"
+glance = "1.2.0"
 
-# WorkManager + SAF — sauvegarde automatique planifiée.
-# Épinglés sur ce que Glance 1.1.1 résout DÉJÀ dans le classpath : les déclarer explicitement ne
-# change aucun artefact résolu, donc ne touche pas à la build reproductible que la MR F-Droid
-# !42991 fait vérifier. À remonter une fois la MR fusionnée, pas avant.
-work = "2.7.1"
-documentfile = "1.0.0"
+# WorkManager + SAF — sauvegarde automatique planifiée, et le travail ponctuel du widget (Glance).
+# Gelés en 2.7.1 / 1.0.0 tant que la MR F-Droid !42991 épinglait un commit (fusionnée le 2026-10-02).
+# Remontés le 2026-11-22 : WorkManager 2.12.0 comme SMS Tech. Depuis la 2.8, WorkManager livre lui-même
+# la règle R8 qui garde le constructeur des InputMerger (le widget mort de la 1.3.2, issue #37) ;
+# tools/check-r8-reflection.py le vérifie sur chaque build release.
+work = "2.12.0"
+documentfile = "1.1.0"
 
 # Logging
 timber = "5.0.1"
