@@ -3,8 +3,8 @@ package com.filestech.agenda_tech.ui.util
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
+import androidx.core.net.toUri
 import com.filestech.agenda_tech.R
 import timber.log.Timber
 
@@ -18,7 +18,7 @@ import timber.log.Timber
  * Shared by the editor's place fields and the day's list, so a place opens the same way from both.
  */
 fun openMapLink(context: Context, uri: String) {
-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri))) }
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri.toUri())) }
         .onFailure {
             Timber.w(it, "No maps app to open a geo: link")
             if (it is ActivityNotFoundException) {

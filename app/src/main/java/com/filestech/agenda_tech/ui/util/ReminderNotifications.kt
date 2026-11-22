@@ -93,7 +93,9 @@ fun rememberReminderNotifications(): ReminderNotifications {
 
     val launcher = rememberAppResultLauncher(ActivityResultContracts.RequestPermission()) { granted ->
         enabled = notificationsEnabled(context)
-        if (!granted) {
+        // The request is only ever launched on Android 13+ (below), where this permission exists; the
+        // check is restated here so the rationale query says so itself.
+        if (!granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             dialogExhausted = activity == null ||
                 !ActivityCompat.shouldShowRequestPermissionRationale(
                     activity,

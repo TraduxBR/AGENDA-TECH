@@ -2,7 +2,6 @@ package com.filestech.agenda_tech.ui.screens.about
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -86,6 +85,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.pm.PackageInfoCompat
+import androidx.core.net.toUri
 import com.filestech.agenda_tech.ui.theme.LogoShape
 import com.filestech.agenda_tech.R
 import timber.log.Timber
@@ -619,7 +619,7 @@ private fun versionName(context: Context): String {
 }
 
 private fun reportIssue(context: Context) {
-    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$CONTACT_EMAIL")).apply {
+    val intent = Intent(Intent.ACTION_SENDTO, "mailto:$CONTACT_EMAIL".toUri()).apply {
         putExtra(
             Intent.EXTRA_SUBJECT,
             "${context.getString(R.string.app_name)} ${versionName(context)}",
@@ -629,7 +629,7 @@ private fun reportIssue(context: Context) {
 }
 
 private fun openUrl(context: Context, url: String) {
-    safeStartActivity(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    safeStartActivity(context, Intent(Intent.ACTION_VIEW, url.toUri()))
 }
 
 /** Never crash when no app can handle the intent (e.g. no browser / no mail client installed). */

@@ -19,8 +19,18 @@ versions selon [SemVer](https://semver.org/lang/fr/).
   instead. Moving the start now moves the end with it, keeping the duration shown — the default one for
   a new event, the event's own when editing or after "Duplicate". It is counted on the clock, so an
   event moved across the change to summer or winter time still ends at the same hour.
+- **Counts read right with one**, in the six languages: "1 events imported from 1 calendar(s)" after
+  an import from the phone's calendar, "Backup created: 1 event(s)", "Restored: 1 calendar(s)…". A
+  count now takes its proper singular or plural; where a sentence holds several numbers, each follows
+  its label ("Calendars read: 2"), since a plural can only be chosen on one number.
 
 ### Changed
+
+- Lint: the warnings that were not dependency-version notices are fixed (47 → 22): the plurals above,
+  KTX forms (`toUri`, `SharedPreferences.edit`, synchronous writes kept with `commit = true`), the
+  Android 13 checks made visible where lint looks for them, the widgets' Android 12 sizes declared as
+  such. The version notices stay visible on purpose: a dependency upgrade is decided on its own, with
+  its F-Droid reproducibility check.
 
 - The translation check knows the plural categories of Portuguese, now fails on a language whose
   categories it does not know (it skipped its plurals without a word), and reads `locales_config.xml`
