@@ -246,7 +246,7 @@ apply to it as to the other two.
   ✅ That truncation **is reported to the user** (audit SEC-6, shipped). The fact is *returned* by
   `DeviceCalendarRepositoryImpl.readEvents()` (`DeviceRead(rows, truncated)`), not logged — the log
   would be inert on a published version (`NoOpReleaseTree`). `ImportDeviceEventsUseCase` carries it up
-  to `DeviceImportScreen`, which shows `device_import_truncated` (present in all five languages),
+  to `DeviceImportScreen`, which shows `device_import_truncated` (present in every language),
   distinct from the success message and from the partial-failure one: a truncation is neither, and
   conflating them would be hiding it.
 

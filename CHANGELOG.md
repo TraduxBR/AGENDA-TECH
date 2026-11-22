@@ -5,6 +5,32 @@ versions selon [SemVer](https://semver.org/lang/fr/).
 
 ## [Unreleased]
 
+### Added
+
+- **Brazilian Portuguese**, contributed by TraduxBR (#55): every screen, notification and widget. On
+  Android 13 and later it can also be chosen for Agenda Tech alone (Settings → Apps → Agenda Tech →
+  Language).
+
+### Changed
+
+- The translation check knows the plural categories of Portuguese, now fails on a language whose
+  categories it does not know (it skipped its plurals without a word), and reads `locales_config.xml`
+  in BCP 47 (`pt-BR`), the form Android parses — it expected `pt-rBR`, which Android reads as plain
+  Portuguese.
+
+## [1.3.4] — 2026-10-31
+
+Selected text stays in the app.
+
+### Fixed
+
+- **The selection toolbar handed the selected text to other apps.** Selecting text in an event — a
+  title, a place, a note — offered **Translate** (Android's text classifier) and the text actions of
+  other installed apps; each received the selected text. They are gone on every Android version:
+  before Android 11 every installed app could add its action. The toolbar keeps Cut, Copy, Paste and
+  Select all. One loss to state: Android's **Read aloud** no longer appears there; it stays reachable
+  through its accessibility shortcut.
+
 ### Changed
 
 - **Terms of use, liability, in the five languages.** The clause said the publisher was liable for no
