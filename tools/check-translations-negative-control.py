@@ -73,9 +73,26 @@ DE_OK = """<?xml version="1.0" encoding="utf-8"?>
 </resources>
 """
 
+# A language WITH A REGION: its folder says pt-rBR, localeFilters too, and locales_config pt-BR
+# (BCP 47). The positive witness requires the three spellings to be accepted together.
+PT_OK = """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Agenda Tech</string>
+    <string name="hello">Olá</string>
+    <string name="promise">100% local — zero rede</string>
+    <string name="moved">Movido para %1$s às %2$s</string>
+    <string name="about_privacy_policy_url">https://github.com/gitubpatrice/AGENDA-TECH/blob/main/PRIVACY.md</string>
+    <plurals name="events">
+        <item quantity="one">%1$d evento</item>
+        <item quantity="many">%1$d de eventos</item>
+        <item quantity="other">%1$d eventos</item>
+    </plurals>
+</resources>
+"""
+
 GRADLE = """android {
     androidResources {
-        localeFilters += listOf("en", "fr", "de")
+        localeFilters += listOf("en", "fr", "de", "pt-rBR")
     }
 }
 """
@@ -85,6 +102,7 @@ LOCALES_CONFIG = """<?xml version="1.0" encoding="utf-8"?>
     <locale android:name="en" />
     <locale android:name="fr" />
     <locale android:name="de" />
+    <locale android:name="pt-BR" />
 </locale-config>
 """
 
@@ -135,6 +153,7 @@ def build():
     # fire on its own and mask the defect each case targets.
     write(res("values-de", "strings.xml"), DE_OK)
     write(res("values-fr", "strings.xml"), FR_OK)
+    write(res("values-pt-rBR", "strings.xml"), PT_OK)
     # The documents the privacy links point at.
     write(path("PRIVACY.md"), "policy\n")
     write(path("PRIVACY.fr.md"), "politique\n")
@@ -209,6 +228,15 @@ def cldr_category_of_the_language_missing():
     return "CLDR category MISSING for this language: many"
 
 
+def language_unknown_to_cldr():
+    """A language the CLDR table does not list: its plurals were skipped, without a word."""
+    write(res("values-eo", "strings.xml"), DE_OK)
+    write(path("app", "build.gradle.kts"), GRADLE.replace('"pt-rBR"', '"pt-rBR", "eo"'))
+    write(res("xml", "locales_config.xml"),
+          LOCALES_CONFIG.replace("</locale-config>", '    <locale android:name="eo" />\n</locale-config>'))
+    return "no CLDR plural categories known for this language"
+
+
 def useless_cldr_category():
     de(DE_OK.replace('        <item quantity="other">%1$d Termine</item>',
                      '        <item quantity="two">%1$d Termine</item>\n'
@@ -230,6 +258,13 @@ def absent_from_locales_config():
     write(res("xml", "locales_config.xml"),
           LOCALES_CONFIG.replace('    <locale android:name="de" />\n', ""))
     return "absent from res/xml/locales_config.xml"
+
+
+def region_written_as_its_folder_qualifier():
+    """pt-rBR in locales_config: Android reads plain "pt" there, not Brazilian Portuguese."""
+    write(res("xml", "locales_config.xml"),
+          LOCALES_CONFIG.replace('android:name="pt-BR"', 'android:name="pt-rBR"'))
+    return "absent from res/xml/locales_config.xml as pt-BR"
 
 
 def locales_config_gone():
@@ -306,10 +341,12 @@ CASES = [
     ("argument invented in a plural", invented_argument_in_plural),
     ("plural quantity missing", missing_quantity),
     ("plural: CLDR category of the LANGUAGE missing", cldr_category_of_the_language_missing),
+    ("plural: language unknown to the CLDR table", language_unknown_to_cldr),
     ("plural: useless CLDR category", useless_cldr_category),
     ("gesture b: absent from localeFilters", absent_from_locale_filters),
     ("gesture b: localeFilters block gone", locale_filters_block_gone),
     ("gesture c: absent from locales_config", absent_from_locales_config),
+    ("gesture c: region written as pt-rBR", region_written_as_its_folder_qualifier),
     ("gesture c: locales_config.xml gone", locales_config_gone),
     ("gesture d: manifest does not reference it", manifest_does_not_point_at_locales_config),
     ("converse: language announced, not translated", language_announced_without_translation),
