@@ -73,7 +73,9 @@ import com.filestech.agenda_tech.domain.birthday.birthdayDisplayTitle
 import com.filestech.agenda_tech.domain.model.Calendar
 import com.filestech.agenda_tech.domain.model.CalendarColor
 import com.filestech.agenda_tech.domain.model.EventKind
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceFreq
+import com.filestech.agenda_tech.domain.recurrence.monthlyRulesThrough
 import com.filestech.agenda_tech.domain.location.GeoLink
 import com.filestech.agenda_tech.domain.location.PlaceLabel
 import com.filestech.agenda_tech.domain.model.Weekday
@@ -103,6 +105,21 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 private enum class EditTarget { START, END, RECURRENCE_UNTIL }
+
+/**
+ * What the recurrence controls send back, as one argument. They all edit the same thing — the series'
+ * rule — and the editor's content had reached the parameter count detekt allows (LongParameterList)
+ * with one callback per control; the day-of-the-month choice would have taken it past.
+ */
+private class RecurrenceActions(
+    val onSelect: (RecurrenceFreq?) -> Unit,
+    val onIntervalChange: (Int) -> Unit,
+    val onToggleWeekday: (Weekday) -> Unit,
+    val onMonthlyModeChange: (MonthlyMode) -> Unit,
+    val onEndChange: (RecurrenceEnd) -> Unit,
+    val onCountChange: (Int) -> Unit,
+    val onUntilDateChange: (LocalDate) -> Unit,
+)
 
 @Composable
 fun EventEditorScreen(
@@ -178,12 +195,20 @@ fun EventEditorScreen(
         onEndTimeChange = viewModel::onEndTimeChange,
         onCalendarSelect = viewModel::onCalendarSelect,
         onColorChange = viewModel::onColorChange,
-        onRecurrenceSelect = viewModel::onRecurrenceSelect,
-        onRecurrenceIntervalChange = viewModel::onRecurrenceIntervalChange,
-        onToggleRecurrenceWeekday = viewModel::onToggleRecurrenceWeekday,
-        onRecurrenceEndChange = viewModel::onRecurrenceEndChange,
-        onRecurrenceCountChange = viewModel::onRecurrenceCountChange,
-        onRecurrenceUntilDateChange = viewModel::onRecurrenceUntilDateChange,
+        recurrence = remember(viewModel) {
+            RecurrenceActions(
+                onSelect = viewModel::onRecurrenceSelect,
+                onIntervalChange = viewModel::onRecurrenceIntervalChange,
+                onToggleWeekday = viewModel::onToggleRecurrenceWeekday,
+                onMonthlyModeChange = viewModel::onMonthlyModeChange,
+                onEndChange = viewModel::onRecurrenceEndChange,
+                onCountChange = viewModel::onRecurrenceCountChange,
+                onUntilDateChange = viewModel::onRecurrenceUntilDateChange,
+            )
+        },
+        // Asked of the ViewModel, which knows the zone the series is saved in: the choices shown are then
+        // the rules that are saved (see savedStart).
+        monthlyAnchor = viewModel.savedStart(state).toLocalDate(),
         onAddReminder = viewModel::onAddReminder,
         onRemoveReminder = viewModel::onRemoveReminder,
         onDescriptionChange = viewModel::onDescriptionChange,
@@ -297,12 +322,9 @@ private fun EventEditorContent(
     onEndTimeChange: (Int, Int) -> Unit,
     onCalendarSelect: (Long) -> Unit,
     onColorChange: (CalendarColor?) -> Unit,
-    onRecurrenceSelect: (RecurrenceFreq?) -> Unit,
-    onRecurrenceIntervalChange: (Int) -> Unit,
-    onToggleRecurrenceWeekday: (Weekday) -> Unit,
-    onRecurrenceEndChange: (RecurrenceEnd) -> Unit,
-    onRecurrenceCountChange: (Int) -> Unit,
-    onRecurrenceUntilDateChange: (LocalDate) -> Unit,
+    recurrence: RecurrenceActions,
+    /** The date a monthly series' position is counted on — the start, in the zone it is saved in. */
+    monthlyAnchor: LocalDate,
     onAddReminder: (Int) -> Unit,
     onRemoveReminder: (Int) -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -510,7 +532,7 @@ private fun EventEditorContent(
             // Same reasoning: "every year" is what makes it a birthday, so it is stated by the chip
             // above rather than offered as a choice that could contradict it.
             if (!isBirthday) {
-                RecurrenceDropdown(selected = state.recurrenceFreq, onSelect = onRecurrenceSelect)
+                RecurrenceDropdown(selected = state.recurrenceFreq, onSelect = recurrence.onSelect)
             }
 
             state.recurrenceFreq?.takeIf { !isBirthday }?.let { freq ->
@@ -518,14 +540,17 @@ private fun EventEditorContent(
                     freq = freq,
                     interval = state.recurrenceInterval,
                     byWeekdays = state.recurrenceByWeekdays,
+                    monthlyMode = state.recurrenceMonthlyMode,
+                    monthlyAnchor = monthlyAnchor,
                     end = state.recurrenceEnd,
                     count = state.recurrenceCount,
                     untilDate = state.recurrenceUntilDate,
                     locale = locale,
-                    onIntervalChange = onRecurrenceIntervalChange,
-                    onToggleWeekday = onToggleRecurrenceWeekday,
-                    onEndChange = onRecurrenceEndChange,
-                    onCountChange = onRecurrenceCountChange,
+                    onIntervalChange = recurrence.onIntervalChange,
+                    onToggleWeekday = recurrence.onToggleWeekday,
+                    onMonthlyModeChange = recurrence.onMonthlyModeChange,
+                    onEndChange = recurrence.onEndChange,
+                    onCountChange = recurrence.onCountChange,
                     onPickUntilDate = { datePickerTarget = EditTarget.RECURRENCE_UNTIL },
                 )
             }
@@ -624,7 +649,7 @@ private fun EventEditorContent(
                 when (target) {
                     EditTarget.START -> onStartDateChange(date)
                     EditTarget.END -> onEndDateChange(date)
-                    EditTarget.RECURRENCE_UNTIL -> onRecurrenceUntilDateChange(date)
+                    EditTarget.RECURRENCE_UNTIL -> recurrence.onUntilDateChange(date)
                 }
                 datePickerTarget = null
             },
@@ -787,12 +812,15 @@ private fun AdvancedRecurrenceSection(
     freq: RecurrenceFreq,
     interval: Int,
     byWeekdays: Set<Weekday>,
+    monthlyMode: MonthlyMode,
+    monthlyAnchor: LocalDate,
     end: RecurrenceEnd,
     count: Int,
     untilDate: LocalDate,
     locale: Locale,
     onIntervalChange: (Int) -> Unit,
     onToggleWeekday: (Weekday) -> Unit,
+    onMonthlyModeChange: (MonthlyMode) -> Unit,
     onEndChange: (RecurrenceEnd) -> Unit,
     onCountChange: (Int) -> Unit,
     onPickUntilDate: () -> Unit,
@@ -823,6 +851,22 @@ private fun AdvancedRecurrenceSection(
                         selected = weekday in byWeekdays,
                         onClick = { onToggleWeekday(weekday) },
                         label = { Text(weekdayNarrow(weekday, locale)) },
+                    )
+                }
+            }
+        }
+
+        // Monthly: which day of the month, from the start — "on day 10", "on the second Tuesday", and the
+        // last Tuesday / last day when the start is one. One group for TalkBack, as the end choices below.
+        if (freq == RecurrenceFreq.MONTHLY) {
+            val selected = monthlyMode.selectedOn(monthlyAnchor)
+            Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                monthlyRulesThrough(monthlyAnchor).forEach { rule ->
+                    val mode = MonthlyMode.of(rule)
+                    RecurrenceEndChoice(
+                        selected = mode == selected,
+                        label = monthlyRuleLabel(rule, monthlyAnchor),
+                        onSelect = { onMonthlyModeChange(mode) },
                     )
                 }
             }
@@ -874,7 +918,8 @@ private fun AdvancedRecurrenceSection(
 
 /**
  * One way a series ends: its button and its label as a single target. The label alone did nothing, as
- * the all-day switch's (found with it, 2026-10-22).
+ * the all-day switch's (found with it, 2026-10-22). Also each day-of-the-month choice of a monthly series:
+ * the same radio line, rather than a second one to keep in step with it.
  */
 @Composable
 internal fun RecurrenceEndChoice(selected: Boolean, label: String, onSelect: () -> Unit) {
@@ -1125,6 +1170,66 @@ private fun intervalUnitLabel(context: android.content.Context, freq: Recurrence
 
 private fun weekdayNarrow(weekday: Weekday, locale: Locale): String =
     DayOfWeek.of(weekday.isoValue).getDisplayName(TextStyle.NARROW, locale)
+
+/**
+ * A monthly choice in words: "On day 10", "On the second Tuesday", "On the last day of the month". The
+ * day number is [anchor]'s, the date the rule was worked out from.
+ */
+@Composable
+private fun monthlyRuleLabel(rule: MonthlyRule, anchor: LocalDate): String = when (rule) {
+    MonthlyRule.SameDay -> stringResource(R.string.recurrence_monthly_on_day, anchor.dayOfMonth)
+    MonthlyRule.LastDay -> stringResource(R.string.recurrence_monthly_last_day)
+    is MonthlyRule.NthWeekday -> stringResource(nthWeekdayLabelRes(rule))
+}
+
+/**
+ * The phrase for one rank and one weekday: a whole string per pair, never an ordinal word put before a
+ * weekday name — Italian says "il secondo martedì" but "la seconda domenica" (see strings.xml).
+ */
+internal fun nthWeekdayLabelRes(rule: MonthlyRule.NthWeekday): Int {
+    val row = if (rule.ordinal == MonthlyRule.LAST) NTH_WEEKDAY_LABELS.last() else NTH_WEEKDAY_LABELS[rule.ordinal - 1]
+    return row[rule.weekday.isoValue - 1]
+}
+
+/** Rows by rank — first to fifth, then last; columns by ISO weekday, Monday first. */
+private val NTH_WEEKDAY_LABELS: List<IntArray> = listOf(
+    intArrayOf(
+        R.string.recurrence_monthly_first_monday, R.string.recurrence_monthly_first_tuesday,
+        R.string.recurrence_monthly_first_wednesday, R.string.recurrence_monthly_first_thursday,
+        R.string.recurrence_monthly_first_friday, R.string.recurrence_monthly_first_saturday,
+        R.string.recurrence_monthly_first_sunday,
+    ),
+    intArrayOf(
+        R.string.recurrence_monthly_second_monday, R.string.recurrence_monthly_second_tuesday,
+        R.string.recurrence_monthly_second_wednesday, R.string.recurrence_monthly_second_thursday,
+        R.string.recurrence_monthly_second_friday, R.string.recurrence_monthly_second_saturday,
+        R.string.recurrence_monthly_second_sunday,
+    ),
+    intArrayOf(
+        R.string.recurrence_monthly_third_monday, R.string.recurrence_monthly_third_tuesday,
+        R.string.recurrence_monthly_third_wednesday, R.string.recurrence_monthly_third_thursday,
+        R.string.recurrence_monthly_third_friday, R.string.recurrence_monthly_third_saturday,
+        R.string.recurrence_monthly_third_sunday,
+    ),
+    intArrayOf(
+        R.string.recurrence_monthly_fourth_monday, R.string.recurrence_monthly_fourth_tuesday,
+        R.string.recurrence_monthly_fourth_wednesday, R.string.recurrence_monthly_fourth_thursday,
+        R.string.recurrence_monthly_fourth_friday, R.string.recurrence_monthly_fourth_saturday,
+        R.string.recurrence_monthly_fourth_sunday,
+    ),
+    intArrayOf(
+        R.string.recurrence_monthly_fifth_monday, R.string.recurrence_monthly_fifth_tuesday,
+        R.string.recurrence_monthly_fifth_wednesday, R.string.recurrence_monthly_fifth_thursday,
+        R.string.recurrence_monthly_fifth_friday, R.string.recurrence_monthly_fifth_saturday,
+        R.string.recurrence_monthly_fifth_sunday,
+    ),
+    intArrayOf(
+        R.string.recurrence_monthly_last_monday, R.string.recurrence_monthly_last_tuesday,
+        R.string.recurrence_monthly_last_wednesday, R.string.recurrence_monthly_last_thursday,
+        R.string.recurrence_monthly_last_friday, R.string.recurrence_monthly_last_saturday,
+        R.string.recurrence_monthly_last_sunday,
+    ),
+)
 
 private fun recurrenceLabelRes(freq: RecurrenceFreq?): Int = when (freq) {
     null -> R.string.recurrence_none

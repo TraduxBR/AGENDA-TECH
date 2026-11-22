@@ -43,11 +43,15 @@ private fun deviceEvent(
     originalInstanceTime = originalInstanceTime,
 )
 
+/** The event the mapper makes of [device] — the flag beside it is the subject of `RRuleReaderTest`. */
+private fun toEvent(device: DeviceEvent, calendarId: Long, defaultZone: java.time.ZoneId = java.time.ZoneId.systemDefault()) =
+    DeviceEventMapper.map(device, calendarId, defaultZone)?.event
+
 class DeviceEventMapperTest {
 
     @Test
     fun `maps a plain event`() {
-        val e = DeviceEventMapper.toEvent(deviceEvent(), CAL_ID)!!
+        val e = toEvent(deviceEvent(), CAL_ID)!!
         assertThat(e.calendarId).isEqualTo(CAL_ID)
         assertThat(e.title).isEqualTo("Réunion")
         assertThat(e.startUtcMillis).isEqualTo(1_700_000_000_000L)
@@ -58,15 +62,15 @@ class DeviceEventMapperTest {
 
     @Test
     fun `blank title is skipped`() {
-        assertThat(DeviceEventMapper.toEvent(deviceEvent(title = "  "), CAL_ID)).isNull()
-        assertThat(DeviceEventMapper.toEvent(deviceEvent(title = null), CAL_ID)).isNull()
+        assertThat(toEvent(deviceEvent(title = "  "), CAL_ID)).isNull()
+        assertThat(toEvent(deviceEvent(title = null), CAL_ID)).isNull()
     }
 
     @Test
     fun `strips bidi control characters from text`() {
         val rlo = 0x202E.toChar() // RIGHT-TO-LEFT OVERRIDE
         val pdi = 0x2069.toChar() // POP DIRECTIONAL ISOLATE
-        val e = DeviceEventMapper.toEvent(
+        val e = toEvent(
             deviceEvent(title = "a${rlo}b", description = "x${pdi}y"),
             CAL_ID,
         )!!
@@ -76,25 +80,25 @@ class DeviceEventMapperTest {
 
     @Test
     fun `falls back to duration when end is null`() {
-        val e = DeviceEventMapper.toEvent(deviceEvent(end = null, duration = "PT2H"), CAL_ID)!!
+        val e = toEvent(deviceEvent(end = null, duration = "PT2H"), CAL_ID)!!
         assertThat(e.endUtcMillis - e.startUtcMillis).isEqualTo(2 * 60 * 60 * 1000L)
     }
 
     @Test
     fun `parses day-based duration`() {
-        val e = DeviceEventMapper.toEvent(deviceEvent(end = null, duration = "P1D", allDay = true), CAL_ID)!!
+        val e = toEvent(deviceEvent(end = null, duration = "P1D", allDay = true), CAL_ID)!!
         assertThat(e.endUtcMillis - e.startUtcMillis).isEqualTo(24 * 60 * 60 * 1000L)
     }
 
     @Test
     fun `defaults to one hour when neither end nor duration is known`() {
-        val e = DeviceEventMapper.toEvent(deviceEvent(end = null, duration = null), CAL_ID)!!
+        val e = toEvent(deviceEvent(end = null, duration = null), CAL_ID)!!
         assertThat(e.endUtcMillis - e.startUtcMillis).isEqualTo(60 * 60 * 1000L)
     }
 
     @Test
     fun `parses a weekly RRULE with BYDAY and COUNT`() {
-        val e = DeviceEventMapper.toEvent(
+        val e = toEvent(
             deviceEvent(rrule = "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=10"),
             CAL_ID,
         )!!
@@ -108,7 +112,7 @@ class DeviceEventMapperTest {
 
     @Test
     fun `parses UNTIL and tolerates a leading RRULE prefix`() {
-        val e = DeviceEventMapper.toEvent(deviceEvent(rrule = "RRULE:FREQ=DAILY;UNTIL=20251231T235959Z"), CAL_ID)!!
+        val e = toEvent(deviceEvent(rrule = "RRULE:FREQ=DAILY;UNTIL=20251231T235959Z"), CAL_ID)!!
         val expected = LocalDateTime.of(2025, 12, 31, 23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli()
         val r = e.recurrence!!
         assertThat(r.freq).isEqualTo(RecurrenceFreq.DAILY)
@@ -119,7 +123,7 @@ class DeviceEventMapperTest {
     fun `a COUNT below 1 does not take the UNTIL bound down with it`() {
         // COUNT was filtered after UNTIL had already been suppressed on the raw value, so COUNT=0 lost
         // both bounds and turned a finite series into an endless one. Same order as IcsCodec now.
-        val e = DeviceEventMapper.toEvent(
+        val e = toEvent(
             deviceEvent(rrule = "FREQ=DAILY;COUNT=0;UNTIL=20251231T235959Z"),
             CAL_ID,
         )!!
@@ -132,7 +136,7 @@ class DeviceEventMapperTest {
 
     @Test
     fun `parses EXDATE list with a TZID prefix`() {
-        val e = DeviceEventMapper.toEvent(
+        val e = toEvent(
             deviceEvent(rrule = "FREQ=DAILY", exDate = "TZID=UTC:20250101T090000Z,20250102T090000Z"),
             CAL_ID,
         )!!
@@ -141,7 +145,7 @@ class DeviceEventMapperTest {
 
     @Test
     fun `unknown FREQ makes the event single`() {
-        val e = DeviceEventMapper.toEvent(deviceEvent(rrule = "FREQ=HOURLY"), CAL_ID)!!
+        val e = toEvent(deviceEvent(rrule = "FREQ=HOURLY"), CAL_ID)!!
         assertThat(e.recurrence).isNull()
     }
 
@@ -150,7 +154,7 @@ class DeviceEventMapperTest {
         val paris = java.time.ZoneId.of("Europe/Paris")
         val utcMidnight = java.time.LocalDate.of(2026, 7, 14)
             .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-        val e = DeviceEventMapper.toEvent(
+        val e = toEvent(
             deviceEvent(start = utcMidnight, end = utcMidnight + 86_400_000L, allDay = true, tz = "UTC"),
             CAL_ID,
             paris,
@@ -162,19 +166,19 @@ class DeviceEventMapperTest {
 
     @Test
     fun `carries the source uid for idempotent re-import`() {
-        val e = DeviceEventMapper.toEvent(deviceEvent(uid = "abc-123"), CAL_ID)!!
+        val e = toEvent(deviceEvent(uid = "abc-123"), CAL_ID)!!
         assertThat(e.sourceUid).isEqualTo("abc-123")
     }
 
     @Test
     fun `caps oversized text fields`() {
-        val e = DeviceEventMapper.toEvent(deviceEvent(title = "x".repeat(10_000)), CAL_ID)!!
+        val e = toEvent(deviceEvent(title = "x".repeat(10_000)), CAL_ID)!!
         assertThat(e.title.length).isAtMost(4_000)
     }
 
     @Test
     fun `bounds a pathological duration instead of overflowing`() {
-        val e = DeviceEventMapper.toEvent(deviceEvent(end = null, duration = "P999999999D"), CAL_ID)!!
+        val e = toEvent(deviceEvent(end = null, duration = "P999999999D"), CAL_ID)!!
         val span = e.endUtcMillis - e.startUtcMillis
         assertThat(span).isGreaterThan(0L)
         assertThat(span).isAtMost(3_650L * 24 * 60 * 60 * 1000)

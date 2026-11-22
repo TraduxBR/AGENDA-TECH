@@ -195,6 +195,22 @@ object Migrations {
         }
     }
 
+    /**
+     * v8 (2026-11): monthly series by position — "the second Tuesday", "the last Friday", "the last day".
+     * Adds `events.rrule_monthly_ordinal` and `events.rrule_monthly_weekday` (encoding on the entity).
+     *
+     * Both nullable with no default: SQLite adds such a column without touching a single row, and a row
+     * that has them both null reads as the start's day number — exactly what every monthly series meant
+     * up to v7. Purely additive, in the sense the KDoc above requires. Room's schema check needs no
+     * `defaultValue` on the entity for them, as for the nullable columns of v2, v3 and v5.
+     */
+    private val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE events ADD COLUMN rrule_monthly_ordinal INTEGER")
+            db.execSQL("ALTER TABLE events ADD COLUMN rrule_monthly_weekday INTEGER")
+        }
+    }
+
     /** How many repaired zone names the trace keeps; the count itself is always recorded. */
     private const val MAX_TRACED_REPAIRS = 20
 
@@ -213,5 +229,6 @@ object Migrations {
         MIGRATION_4_5,
         migration5to6(),
         MIGRATION_6_7,
+        MIGRATION_7_8,
     )
 }

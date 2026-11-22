@@ -6,8 +6,10 @@ import com.filestech.agenda_tech.domain.ics.toIcsEvent
 import com.filestech.agenda_tech.domain.model.Calendar
 import com.filestech.agenda_tech.domain.model.CalendarColor
 import com.filestech.agenda_tech.domain.model.Event
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceFreq
 import com.filestech.agenda_tech.domain.model.RecurrenceRule
+import com.filestech.agenda_tech.domain.model.Weekday
 import com.filestech.agenda_tech.domain.share.EventShare
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
@@ -83,6 +85,19 @@ class IcsRoundTripTest {
         repeat(3) { roundTrip() }
 
         assertThat(events.rows.keys).isEqualTo(before)
+    }
+
+    @Test
+    fun `a series by position comes back on the same days, and nothing is said about it`() = runTest {
+        // START, 3 Nov 2026 at 09:00 in Paris, is the first Tuesday of its month.
+        val rule = RecurrenceRule(RecurrenceFreq.MONTHLY, monthly = MonthlyRule.NthWeekday(1, Weekday.TUESDAY))
+        val id = events.upsert(event(recurrence = rule))
+
+        val result = import(export(NOW).ics, ZONE)
+
+        assertThat(events.rows.keys).containsExactly(id)
+        assertThat(events.rows.getValue(id).recurrence).isEqualTo(rule)
+        assertThat(result.firstDateOnly).isEqualTo(0)
     }
 
     @Test

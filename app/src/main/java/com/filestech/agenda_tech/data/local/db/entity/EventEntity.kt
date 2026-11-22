@@ -64,6 +64,14 @@ data class EventEntity(
     @ColumnInfo(name = "rrule_count") val rruleCount: Int?,
     @ColumnInfo(name = "rrule_until") val rruleUntilUtcMillis: Long?,
     @ColumnInfo(name = "rrule_exdates") val rruleExDates: String,
+    // Which day of the month a MONTHLY series falls on (v8) — RFC 5545 `BYDAY=2TU` / `BYMONTHDAY=-1`, kept
+    // as two plain numbers, `MonthlyRule.storedOrdinal` / `storedWeekdayIso`:
+    //   ordinal NULL                  → the start's day number ("on day 10"); every row before v8 reads so
+    //   ordinal 1..5 or -1, weekday 1..7 (ISO, Monday = 1) → the n-th or the last such weekday
+    //   ordinal -1, weekday NULL      → the month's last day
+    // Inert unless rrule_freq is MONTHLY. Both nullable with no default, so the migration only adds them.
+    @ColumnInfo(name = "rrule_monthly_ordinal") val rruleMonthlyOrdinal: Int? = null,
+    @ColumnInfo(name = "rrule_monthly_weekday") val rruleMonthlyWeekday: Int? = null,
     // --- Per-occurrence override (iCalendar RECURRENCE-ID); both null for masters/standalone ---
     @ColumnInfo(name = "recurrence_parent_id") val recurrenceParentId: Long?,
     @ColumnInfo(name = "original_start") val originalStartUtcMillis: Long?,

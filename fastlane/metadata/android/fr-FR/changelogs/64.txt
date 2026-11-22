@@ -1,0 +1,13 @@
+v1.4.0 — Récurrence mensuelle par position
+
+• Chaque mois le 2e mardi, le dernier
+  vendredi ou le dernier jour du mois.
+• Les séries importées tombent à leurs
+  vraies dates ; une règle impossible à
+  suivre garde sa première date, et
+  l'import le dit.
+• La durée par défaut est respectée
+  quand vous choisissez le début.
+• Délai de « Répéter » au choix.
+• Icône à thème (Android 13+).
+• Portugais du Brésil, merci à TraduxBR.

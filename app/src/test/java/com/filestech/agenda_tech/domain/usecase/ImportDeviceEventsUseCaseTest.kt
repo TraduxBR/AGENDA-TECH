@@ -5,6 +5,7 @@ import com.filestech.agenda_tech.domain.model.Calendar
 import com.filestech.agenda_tech.domain.ImportLimits
 import com.filestech.agenda_tech.domain.model.DeviceCalendar
 import com.filestech.agenda_tech.domain.model.DeviceEvent
+import com.filestech.agenda_tech.domain.model.Event
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
@@ -17,6 +18,7 @@ private fun deviceEvent(
     deviceId: Long,
     title: String = "RDV",
     start: Long = 1_700_000_000_000L,
+    rrule: String? = null,
 ) = DeviceEvent(
     uid = uid,
     title = title,
@@ -27,7 +29,7 @@ private fun deviceEvent(
     durationRfc = null,
     eventTimeZone = "Europe/Paris",
     allDay = false,
-    rrule = null,
+    rrule = rrule,
     exDate = null,
     deviceId = deviceId,
     originalId = null,
@@ -241,6 +243,74 @@ class ImportDeviceEventsUseCaseTest {
         val useCase = ImportDeviceEventsUseCase(huge, FakeCalendarRepository(), FakeEventRepository())
 
         assertThat(useCase(listOf(1L), FALLBACK_NAME).truncated).isTrue()
+    }
+
+    @Test
+    fun `repeating events taken as their first date only are counted, across calendars`() = runTest {
+        // The default start, 14 Nov 2023 at 23:13 in Paris, is the second Tuesday of its month.
+        val two = FakeDeviceCalendars(
+            calendars = listOf(
+                DeviceCalendar(id = 1, displayName = "A", accountName = "a", colorArgb = null),
+                DeviceCalendar(id = 2, displayName = "B", accountName = "b", colorArgb = null),
+            ),
+            events = listOf(
+                deviceEvent(uid = "plain", deviceId = 1),
+                deviceEvent(uid = "second-tuesday", deviceId = 2, rrule = "FREQ=MONTHLY;BYDAY=2TU"),
+                deviceEvent(uid = "week-46", deviceId = 3, rrule = "FREQ=YEARLY;BYWEEKNO=46"),
+            ),
+        )
+        val stored = FakeEventRepository()
+        val useCase = ImportDeviceEventsUseCase(two, FakeCalendarRepository(), stored)
+
+        val result = useCase(listOf(1L, 2L), FALLBACK_NAME)
+
+        // The fake serves the same rows for both calendars: one rule it cannot follow in each.
+        assertThat(result.events).isEqualTo(6)
+        assertThat(result.firstDateOnly).isEqualTo(2)
+        assertThat(stored.rows.values.filter { it.sourceUid == "week-46" }.map { it.recurrence }).containsExactly(null, null)
+        assertThat(stored.rows.values.filter { it.sourceUid == "second-tuesday" }.all { it.recurrence != null }).isTrue()
+    }
+
+    @Test
+    fun `a series re-imported under a rule taken as its first date stays as it was, overrides included`() = runTest {
+        // The .ics import's rule (keepsStoredSeries), on the device path: two imports that update by
+        // identity must not disagree about when not to.
+        devices.events = listOf(deviceEvent(uid = "a", deviceId = 1, title = "Cours", rrule = "FREQ=WEEKLY"))
+        import(DEVICE_CAL_ID)
+        val masterId = events.rows.keys.single()
+        val master = events.rows.getValue(masterId).let { stored ->
+            stored.copy(recurrence = stored.recurrence!!.excluding(1_700_604_800_000L))
+        }
+        events.rows[masterId] = master
+        val moved = Event(
+            id = 900,
+            calendarId = master.calendarId,
+            title = "Cours déplacé",
+            startUtcMillis = 1_700_608_400_000L,
+            endUtcMillis = 1_700_612_000_000L,
+            timeZoneId = "Europe/Paris",
+            recurrenceParentId = masterId,
+            originalStartUtcMillis = 1_700_604_800_000L,
+        )
+        events.rows[900] = moved
+
+        devices.events = listOf(deviceEvent(uid = "a", deviceId = 1, title = "Renommé", rrule = "FREQ=YEARLY;BYWEEKNO=46"))
+        val result = import(DEVICE_CAL_ID)
+
+        assertThat(events.rows).containsExactly(masterId, master, 900L, moved)
+        assertThat(result.firstDateOnly).isEqualTo(1)
+        assertThat(result.events).isEqualTo(0)
+    }
+
+    @Test
+    fun `a single event re-imported under a rule taken as its first date is updated as before`() = runTest {
+        devices.events = listOf(deviceEvent(uid = "a", deviceId = 1, title = "Avant"))
+        import(DEVICE_CAL_ID)
+
+        devices.events = listOf(deviceEvent(uid = "a", deviceId = 1, title = "Après", rrule = "FREQ=HOURLY"))
+        import(DEVICE_CAL_ID)
+
+        assertThat(events.rows.values.single().title).isEqualTo("Après")
     }
 
     @Test

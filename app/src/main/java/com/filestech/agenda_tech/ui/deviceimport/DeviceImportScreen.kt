@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import com.filestech.agenda_tech.ui.util.rememberAppResultLauncher
+import com.filestech.agenda_tech.ui.util.withFirstDateOnly
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Box
@@ -112,7 +113,12 @@ fun DeviceImportScreen(
                 )
                 else -> resources.getQuantityString(R.plurals.device_import_done, it.events, it.events, it.calendars)
             }
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+
+            android.widget.Toast.makeText(
+                context,
+                resources.withFirstDateOnly(message, it.firstDateOnly),
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
             viewModel.consumeResult()
             onBack()
         }

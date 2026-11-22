@@ -74,7 +74,7 @@ class TimeZoneInvariantTest {
     @Test
     fun `the device-calendar importer writes a zone that resolves back to itself`() {
         hostileZones.forEach { zone ->
-            val event = DeviceEventMapper.toEvent(
+            val event = DeviceEventMapper.map(
                 device = DeviceEvent(
                     uid = "u",
                     title = "RDV",
@@ -93,7 +93,7 @@ class TimeZoneInvariantTest {
                 ),
                 calendarId = 1,
                 defaultZone = paris,
-            )
+            )?.event
             // Le `?: return@forEach` qui vivait ici sautait le cas EN SILENCE. Trente lignes plus
             // haut, ce fichier explique pourquoi ce meme construit a ete retire de son jumeau
             // `.ics` : « un test qui exerce silencieusement six cas sur sept est pire qu'un qui

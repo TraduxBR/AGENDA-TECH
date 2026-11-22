@@ -17,8 +17,8 @@ class BackupEnvelopeTest {
 
     private fun password() = "correct horse battery".toCharArray()
 
-    private fun sealed(): ByteArray =
-        (envelope.seal(password(), secret) as Outcome.Success).value
+    private fun sealed(version: Byte = BackupEnvelope.ENVELOPE_V1): ByteArray =
+        (envelope.seal(password(), secret, version) as Outcome.Success).value
 
     @Test
     fun `round-trips the payload`() {
@@ -106,7 +106,7 @@ class BackupEnvelopeTest {
         assertThat(onReject).isEqualTo(CharArray(onReject.size) { ' ' })
 
         val onSeal = password()
-        envelope.seal(onSeal, secret)
+        envelope.seal(onSeal, secret, BackupEnvelope.ENVELOPE_V1)
         assertThat(onSeal).isEqualTo(CharArray(onSeal.size) { ' ' })
     }
 
@@ -114,7 +114,8 @@ class BackupEnvelopeTest {
     fun `a password shorter than the minimum is still sealed if it reaches the envelope`() {
         // The length rule belongs to the use case, not here: the envelope must stay a pure primitive
         // so the policy lives in exactly one place.
-        assertThat(envelope.seal("short".toCharArray(), secret)).isInstanceOf(Outcome.Success::class.java)
+        assertThat(envelope.seal("short".toCharArray(), secret, BackupEnvelope.ENVELOPE_V1))
+            .isInstanceOf(Outcome.Success::class.java)
     }
 
     @Test
@@ -123,11 +124,42 @@ class BackupEnvelopeTest {
         // one null, the UI turned that into "this file is not an Agenda Tech backup", and with
         // allowBackup=false that .atbak can be the ONLY copy of the user's agenda. Being told it is
         // not a backup is an instruction to delete it.
+        // Version 3: 2 is now one this build writes (a monthly series by position) and reads.
         val fromTheFuture = sealed()
-        fromTheFuture[ENVELOPE_VERSION_OFFSET] = 0x02
+        fromTheFuture[ENVELOPE_VERSION_OFFSET] = 0x03
 
         assertThat(envelope.recognise(fromTheFuture))
             .isEqualTo(BackupEnvelope.Recognition.UnsupportedVersion)
+    }
+
+    // --- Envelope version 2: a file an older build would restore wrong ---------------------------
+
+    @Test
+    fun `a version 2 file says so in its header and opens`() {
+        val v2 = sealed(BackupEnvelope.ENVELOPE_V2)
+
+        assertThat(v2[ENVELOPE_VERSION_OFFSET]).isEqualTo(BackupEnvelope.ENVELOPE_V2)
+        assertThat(sealed()[ENVELOPE_VERSION_OFFSET]).isEqualTo(BackupEnvelope.ENVELOPE_V1)
+        assertThat((envelope.open(password(), v2) as Outcome.Success).value).isEqualTo(secret)
+    }
+
+    @Test
+    fun `a version 2 file rewritten as version 1 refuses to open`() {
+        // The point of version 2 is that a build up to 1.3.4 refuses the file instead of restoring a
+        // monthly series on the wrong days. Rewriting the byte to 1 would get it past that refusal — but
+        // the header is GCM additional data, so the rewritten file opens nowhere.
+        val downgraded = sealed(BackupEnvelope.ENVELOPE_V2).also { it[ENVELOPE_VERSION_OFFSET] = BackupEnvelope.ENVELOPE_V1 }
+
+        assertThat(envelope.recognise(downgraded)).isInstanceOf(BackupEnvelope.Recognition.Openable::class.java)
+        assertThat(envelope.open(password(), downgraded)).isInstanceOf(Outcome.Failure::class.java)
+    }
+
+    @Test
+    fun `a version below 1 is damage, not a newer file`() {
+        listOf<Byte>(0x00, -1).forEach { byte ->
+            val damaged = sealed().also { it[ENVELOPE_VERSION_OFFSET] = byte }
+            assertThat(envelope.recognise(damaged)).isEqualTo(BackupEnvelope.Recognition.Malformed)
+        }
     }
 
     @Test
@@ -160,7 +192,7 @@ class BackupEnvelopeTest {
         // open() must refuse on the header alone: deriving a key would cost a second of CPU to reach
         // a conclusion already available, and the password must not survive the refusal.
         val fromTheFuture = sealed()
-        fromTheFuture[ENVELOPE_VERSION_OFFSET] = 0x02
+        fromTheFuture[ENVELOPE_VERSION_OFFSET] = 0x03
         val secret = password()
 
         val outcome = envelope.open(secret, fromTheFuture)

@@ -32,6 +32,11 @@
         <item quantity="many">%1$d d’événements importés</item>
         <item quantity="other">%1$d événements importés</item>
     </plurals>
+    <plurals name="import_first_date_only">
+        <item quantity="one">%1$d événement récurrent suit une règle qu’Agenda Tech ne sait pas reproduire : seule sa première date a été importée, ou il est resté tel quel s’il figurait déjà dans votre agenda.</item>
+        <item quantity="many">%1$d d’événements récurrents suivent une règle qu’Agenda Tech ne sait pas reproduire : seule leur première date a été importée, ou ils sont restés tels quels s’ils figuraient déjà dans votre agenda.</item>
+        <item quantity="other">%1$d événements récurrents suivent une règle qu’Agenda Tech ne sait pas reproduire : seule leur première date a été importée, ou ils sont restés tels quels s’ils figuraient déjà dans votre agenda.</item>
+    </plurals>
     <string name="ics_error">Impossible de lire le fichier agenda</string>
     <string name="ics_import_too_many">Ce fichier contient plus d’événements que l’application n’en accepte (%1$d au maximum). Divisez-le et importez les parties.</string>
 
@@ -158,6 +163,51 @@
         <item quantity="other">occurrences</item>
     </plurals>
     <string name="recurrence_end_on">Le</string>
+    <!-- Monthly series: one whole phrase per position and weekday (see the English file). -->
+    <string name="recurrence_monthly_on_day">Le jour %1$d du mois</string>
+    <string name="recurrence_monthly_last_day">Le dernier jour du mois</string>
+    <string name="recurrence_monthly_first_monday">Le premier lundi</string>
+    <string name="recurrence_monthly_first_tuesday">Le premier mardi</string>
+    <string name="recurrence_monthly_first_wednesday">Le premier mercredi</string>
+    <string name="recurrence_monthly_first_thursday">Le premier jeudi</string>
+    <string name="recurrence_monthly_first_friday">Le premier vendredi</string>
+    <string name="recurrence_monthly_first_saturday">Le premier samedi</string>
+    <string name="recurrence_monthly_first_sunday">Le premier dimanche</string>
+    <string name="recurrence_monthly_second_monday">Le deuxième lundi</string>
+    <string name="recurrence_monthly_second_tuesday">Le deuxième mardi</string>
+    <string name="recurrence_monthly_second_wednesday">Le deuxième mercredi</string>
+    <string name="recurrence_monthly_second_thursday">Le deuxième jeudi</string>
+    <string name="recurrence_monthly_second_friday">Le deuxième vendredi</string>
+    <string name="recurrence_monthly_second_saturday">Le deuxième samedi</string>
+    <string name="recurrence_monthly_second_sunday">Le deuxième dimanche</string>
+    <string name="recurrence_monthly_third_monday">Le troisième lundi</string>
+    <string name="recurrence_monthly_third_tuesday">Le troisième mardi</string>
+    <string name="recurrence_monthly_third_wednesday">Le troisième mercredi</string>
+    <string name="recurrence_monthly_third_thursday">Le troisième jeudi</string>
+    <string name="recurrence_monthly_third_friday">Le troisième vendredi</string>
+    <string name="recurrence_monthly_third_saturday">Le troisième samedi</string>
+    <string name="recurrence_monthly_third_sunday">Le troisième dimanche</string>
+    <string name="recurrence_monthly_fourth_monday">Le quatrième lundi</string>
+    <string name="recurrence_monthly_fourth_tuesday">Le quatrième mardi</string>
+    <string name="recurrence_monthly_fourth_wednesday">Le quatrième mercredi</string>
+    <string name="recurrence_monthly_fourth_thursday">Le quatrième jeudi</string>
+    <string name="recurrence_monthly_fourth_friday">Le quatrième vendredi</string>
+    <string name="recurrence_monthly_fourth_saturday">Le quatrième samedi</string>
+    <string name="recurrence_monthly_fourth_sunday">Le quatrième dimanche</string>
+    <string name="recurrence_monthly_fifth_monday">Le cinquième lundi</string>
+    <string name="recurrence_monthly_fifth_tuesday">Le cinquième mardi</string>
+    <string name="recurrence_monthly_fifth_wednesday">Le cinquième mercredi</string>
+    <string name="recurrence_monthly_fifth_thursday">Le cinquième jeudi</string>
+    <string name="recurrence_monthly_fifth_friday">Le cinquième vendredi</string>
+    <string name="recurrence_monthly_fifth_saturday">Le cinquième samedi</string>
+    <string name="recurrence_monthly_fifth_sunday">Le cinquième dimanche</string>
+    <string name="recurrence_monthly_last_monday">Le dernier lundi</string>
+    <string name="recurrence_monthly_last_tuesday">Le dernier mardi</string>
+    <string name="recurrence_monthly_last_wednesday">Le dernier mercredi</string>
+    <string name="recurrence_monthly_last_thursday">Le dernier jeudi</string>
+    <string name="recurrence_monthly_last_friday">Le dernier vendredi</string>
+    <string name="recurrence_monthly_last_saturday">Le dernier samedi</string>
+    <string name="recurrence_monthly_last_sunday">Le dernier dimanche</string>
 
     <!-- Rappels -->
     <string name="editor_reminders">Rappels</string>
@@ -312,7 +362,7 @@
     <string name="about_feat_share_label">Partage et cartes</string>
     <string name="about_feat_share_desc">Partagez un événement en texte ou en fichier .ics, ouvrez son adresse dans votre appli de cartes — c\'est vous qui choisissez l\'appli, Agenda Tech n\'envoie rien lui-même. Supprimé par erreur ? « Annuler » le rétablit.</string>
     <string name="about_feat_recurrence_label">Événements récurrents</string>
-    <string name="about_feat_recurrence_desc">Du quotidien à l\'annuel, intervalles personnalisés, date de fin — modifiez une seule occurrence ou toute la série.</string>
+    <string name="about_feat_recurrence_desc">Du quotidien à l’annuel, intervalles personnalisés, date de fin ; chaque mois par date ou par position (le deuxième mardi, le dernier vendredi, le dernier jour) — modifiez une seule occurrence ou toute la série.</string>
     <string name="about_feat_reminders_label">Rappels</string>
     <string name="about_feat_reminders_desc">Alarmes exactes, délai personnalisé, votre propre sonnerie. Reprogrammés après un redémarrage.</string>
     <string name="about_feat_import_label">Import / export</string>

@@ -5,6 +5,7 @@ import com.filestech.agenda_tech.data.local.db.entity.EventEntity
 import com.filestech.agenda_tech.data.local.db.entity.ReminderEntity
 import com.filestech.agenda_tech.domain.model.Calendar
 import com.filestech.agenda_tech.domain.model.Event
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceRule
 import com.filestech.agenda_tech.domain.model.Reminder
 import com.filestech.agenda_tech.domain.model.Weekday
@@ -77,6 +78,9 @@ internal fun EventEntity.toDomain(): Event = Event(
             // priorite que les deux parseurs RRULE (IcsCodec et DeviceEventMapper).
             untilUtcMillis = if (rruleCount?.takeIf { it >= 1 } != null) null else rruleUntilUtcMillis,
             exDatesUtcMillis = parseEpochList(rruleExDates),
+            // Healed on read like the fields above: `fromStored` never throws, and a combination this
+            // build never writes reads as the day number — what the row meant before v8.
+            monthly = MonthlyRule.fromStored(freq, rruleMonthlyOrdinal, rruleMonthlyWeekday),
         )
     },
     colorOverride = colorOverride,
@@ -106,6 +110,8 @@ internal fun Event.toEntity(createdAt: Long, updatedAt: Long): EventEntity = Eve
     rruleCount = recurrence?.count,
     rruleUntilUtcMillis = recurrence?.untilUtcMillis,
     rruleExDates = recurrence?.exDatesUtcMillis?.let(::formatEpochList).orEmpty(),
+    rruleMonthlyOrdinal = recurrence?.monthly?.storedOrdinal,
+    rruleMonthlyWeekday = recurrence?.monthly?.storedWeekdayIso,
     colorOverride = colorOverride,
     recurrenceParentId = recurrenceParentId,
     originalStartUtcMillis = originalStartUtcMillis,

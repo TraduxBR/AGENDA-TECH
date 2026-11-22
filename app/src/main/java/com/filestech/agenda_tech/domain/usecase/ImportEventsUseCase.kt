@@ -18,9 +18,9 @@ import javax.inject.Singleton
 
 /**
  * Parses an `.ics` document and inserts its events into the default calendar — or, for an event the
- * agenda already holds under that UID, updates it where it is. Returns the number imported (0 if the
- * file has no valid VEVENT or no calendar exists yet). Reminders/VALARM are not imported (out of scope
- * for this codec).
+ * agenda already holds under that UID, updates it where it is. Returns how many were imported (0 if the
+ * file has no valid VEVENT or no calendar exists yet), and how many of those were taken as their first
+ * date only. Reminders/VALARM are not imported (out of scope for this codec).
  */
 // @Singleton, et pas par commodité : un Mutex d'instance ne sérialise rien si Hilt fabrique un
 // exemplaire par injection. Le jumeau ImportDeviceEventsUseCase porte la même annotation pour la
@@ -40,6 +40,13 @@ class ImportEventsUseCase @Inject constructor(
         Exception("ics file holds $found events, over the ${ImportLimits.MAX_EVENTS} ceiling")
 
     /**
+     * [imported] events written. [firstDateOnly]: the file's events that repeat by a rule this app cannot
+     * reproduce (`IcsEvent.firstDateOnly`) — written as their first date, or, for one that would have
+     * updated a series the agenda holds, not written at all ([keepsStoredSeries]). Said, never silent.
+     */
+    data class Result(val imported: Int, val firstDateOnly: Int = 0)
+
+    /**
      * Sérialise les imports (audit AG-14).
      *
      * Le jumeau [ImportDeviceEventsUseCase] porte ce mutex depuis l'audit U3, avec sa raison :
@@ -51,9 +58,10 @@ class ImportEventsUseCase @Inject constructor(
      */
     private val mutex = Mutex()
 
-    suspend operator fun invoke(icsText: String, defaultZoneId: String): Int = mutex.withLock {
+    suspend operator fun invoke(icsText: String, defaultZoneId: String): Result = mutex.withLock {
         val calendars = calendarRepository.observeAll().first()
-        val targetId = (calendars.firstOrNull { it.isDefault } ?: calendars.firstOrNull())?.id ?: return@withLock 0
+        val targetId = (calendars.firstOrNull { it.isDefault } ?: calendars.firstOrNull())?.id
+            ?: return@withLock Result(imported = 0)
 
         val zone = runCatching { ZoneId.of(defaultZoneId) }.getOrDefault(ZoneId.systemDefault())
         val parsed = IcsCodec.decode(icsText, zone)
@@ -102,17 +110,21 @@ class ImportEventsUseCase @Inject constructor(
         // laisserait deux VEVENT la revendiquer chacun par la sienne. Pour une seule cle, c'est le meme
         // appariement.
         val claimed = HashSet<Long>()
-        val mapped = parsed.map { icsEvent ->
+        val mapped = parsed.mapNotNull { icsEvent ->
             val row = icsEvent.uid?.let { uid -> existing[uid]?.firstOrNull { it.id !in claimed } }
-            if (row != null) {
-                claimed += row.id
-                row.updatedFrom(icsEvent, placesWritten = listOf(row.location, EventShare.place(row)))
-            } else {
-                icsEvent.toEvent(targetId)
+            when {
+                row == null -> icsEvent.toEvent(targetId)
+                // Still claimed, so no other VEVENT of that UID takes it — but left as it is.
+                keepsStoredSeries(row, icsEvent.firstDateOnly) -> null.also { claimed += row.id }
+                else -> {
+                    claimed += row.id
+                    row.updatedFrom(icsEvent, placesWritten = listOf(row.location, EventShare.place(row)))
+                }
             }
         }
         eventRepository.upsertAll(mapped) // PERF-1 — single atomic batch, not N transactions
-        return@withLock mapped.size
+        // Every VEVENT taken as its first date is counted, the ones that left a stored series as it was included.
+        return@withLock Result(imported = mapped.size, firstDateOnly = parsed.count { it.firstDateOnly })
     }
 
     /**

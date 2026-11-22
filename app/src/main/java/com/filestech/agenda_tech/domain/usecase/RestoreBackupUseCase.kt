@@ -132,6 +132,9 @@ class RestoreBackupUseCase @Inject constructor(
         if (calendars.size > ImportLimits.MAX_CALENDARS) {
             return "backup holds ${calendars.size} calendars, over the ${ImportLimits.MAX_CALENDARS} ceiling"
         }
+        // One series' cancelled occurrences are one database cell: see ImportLimits.MAX_EXDATES_PER_SERIES.
+        events.firstOrNull { (it.recurrence?.exDatesUtcMillis?.size ?: 0) > ImportLimits.MAX_EXDATES_PER_SERIES }
+            ?.let { return "event ${it.id} cancels over ${ImportLimits.MAX_EXDATES_PER_SERIES} occurrences" }
 
         // Room treats id 0 on an autoGenerate primary key as "unset" and silently assigns a fresh
         // rowid — every calendarId/parentId pointing at 0 would then dangle, with no error raised.

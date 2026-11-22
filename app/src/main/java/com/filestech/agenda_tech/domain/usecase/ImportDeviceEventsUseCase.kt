@@ -49,6 +49,13 @@ class ImportDeviceEventsUseCase @Inject constructor(
          * screen can say it.
          */
         val truncated: Boolean = false,
+        /**
+         * How many rows read repeat by a rule this app cannot reproduce (see `RRuleReading.FirstDateOnly`):
+         * imported as their first date only, or — for one that would have updated a series already here —
+         * not written at all, the series left as it was ([keepsStoredSeries]). Said apart from the outcome
+         * above, which it qualifies rather than replaces: such an import neither failed nor stopped short.
+         */
+        val firstDateOnly: Int = 0,
     )
 
     /**
@@ -102,6 +109,7 @@ class ImportDeviceEventsUseCase @Inject constructor(
         // said something else, and nothing anywhere reconciled the two.
         var remaining = ImportLimits.MAX_EVENTS
         var truncated = false
+        var firstDateOnly = 0
         for (deviceId in selectedCalendarIds.distinct()) {
             val deviceCal = byId[deviceId]
             // One guard, two reasons to skip, and they are NOT the same thing: a calendar that has
@@ -154,8 +162,11 @@ class ImportDeviceEventsUseCase @Inject constructor(
                 // La signature est plurielle a cause du .ics, ou la RFC autorise le partage d'UID.
                 val existing = eventRepository.sourceUidGroups(targetCalendarId)
                     .mapValues { (_, ids) -> ids.first() }
+                var firstDatesOnly = 0
                 val mapped = deviceEvents.mapNotNull { de ->
-                    val ev = DeviceEventMapper.toEvent(de, targetCalendarId) ?: return@mapNotNull null
+                    val taken = DeviceEventMapper.map(de, targetCalendarId) ?: return@mapNotNull null
+                    if (taken.firstDateOnly) firstDatesOnly++
+                    val ev = taken.event
                     val rule = ev.recurrence
                     val withEx = if (rule != null) {
                         val extra = exByMasterDeviceId[de.deviceId].orEmpty()
@@ -177,13 +188,27 @@ class ImportDeviceEventsUseCase @Inject constructor(
                     // would be re-inserted as a duplicate (audit U1).
                     val existingId = withEx.sourceUid?.let { existing[it] }
                         ?: existing[DeviceEventMapper.rowIdUid(de.deviceId)]
-                    if (existingId != null) withEx.copy(id = existingId) else withEx
+                    // The stored row is read only for a rule taken as its first date — rare — and the
+                    // answer is the .ics import's own (keepsStoredSeries): a series stays as it was.
+                    val stored = if (existingId != null && taken.firstDateOnly) eventRepository.getById(existingId) else null
+                    when {
+                        stored != null && keepsStoredSeries(stored, taken.firstDateOnly) -> null
+                        existingId != null -> withEx.copy(id = existingId)
+                        else -> withEx
+                    }
                 }
                 eventRepository.upsertAll(mapped) // atomic batch — all rows or none
-                CalendarOutcome(imported = mapped.size, read = deviceEvents.size, truncated = read.truncated)
+                CalendarOutcome(
+                    imported = mapped.size,
+                    read = deviceEvents.size,
+                    truncated = read.truncated,
+                    firstDateOnly = firstDatesOnly,
+                )
             }.onSuccess { outcome ->
                 calendars++
                 events += outcome.imported
+                // Counted on success only, like `events`: a calendar whose write failed imported none.
+                firstDateOnly += outcome.firstDateOnly
                 // Allowance and truncation are both recorded at the read, above — on every path,
                 // including the one that ends in `onFailure`.
             }.onFailure {
@@ -196,11 +221,17 @@ class ImportDeviceEventsUseCase @Inject constructor(
             events = events,
             failedCalendars = failed,
             truncated = truncated,
+            firstDateOnly = firstDateOnly,
         )
     }
 
     /** One calendar's contribution, so the running allowance is spent on facts and not on guesses. */
-    private data class CalendarOutcome(val imported: Int, val read: Int, val truncated: Boolean)
+    private data class CalendarOutcome(
+        val imported: Int,
+        val read: Int,
+        val truncated: Boolean,
+        val firstDateOnly: Int,
+    )
 
     private companion object {
         const val SOURCE_PREFIX = "device:"

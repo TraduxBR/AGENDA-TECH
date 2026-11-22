@@ -7,7 +7,14 @@ import com.filestech.agenda_tech.core.crypto.AeadCipher
 import com.filestech.agenda_tech.core.crypto.KeystoreManager
 import com.filestech.agenda_tech.core.prefs.MigrationTrace
 import com.filestech.agenda_tech.core.time.TimeZones
+import com.filestech.agenda_tech.data.repository.toDomain
+import com.filestech.agenda_tech.data.repository.toEntity
+import com.filestech.agenda_tech.domain.model.EventKind
+import com.filestech.agenda_tech.domain.model.MonthlyRule
+import com.filestech.agenda_tech.domain.model.RecurrenceFreq
+import com.filestech.agenda_tech.domain.model.Weekday
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.runBlocking
 import net.zetetic.database.sqlcipher.SQLiteDatabase
 import org.junit.After
 import org.junit.Before
@@ -17,7 +24,7 @@ import java.io.File
 import java.time.ZoneId
 
 /**
- * The six Room migrations (v1 → v7), driven through the **real** production path.
+ * The seven Room migrations (v1 → v8), driven through the **real** production path.
  *
  * ## Why this test exists
  *
@@ -106,6 +113,8 @@ class MigrationsTest {
                 assertThat(cursor.isNull(0)).isFalse()
                 assertThat(cursor.getInt(0)).isEqualTo(0)
             }
+            // v8 — monthly position: both NULL, which reads as the day number.
+            assertColumnsAreNull("rrule_monthly_ordinal", "rrule_monthly_weekday")
 
             // The calendar the event hangs off survived too — the foreign key is ON DELETE CASCADE, so
             // losing the calendar would have taken the event with it and this assertion is what tells
@@ -239,6 +248,33 @@ class MigrationsTest {
         }
     }
 
+    /**
+     * v8 — the step every 1.3.x user takes: a database at v7, holding a monthly series, opened by this
+     * build. The series must come out on its day number (the two new columns NULL), and the migrated file
+     * must then store and give back a position like a new one — the columns are not only present for
+     * Room's schema check, they are the ones the mapper writes.
+     */
+    @Test
+    fun aMonthlySeriesWrittenAtV7KeepsItsDayNumberAndTheNewColumnsWork() {
+        seedVersion7Database()
+
+        factory.build(context).apply {
+            assertColumnsAreNull("rrule_monthly_ordinal", "rrule_monthly_weekday")
+            val old = runBlocking { eventDao().getById(1) }!!.toDomain()
+            assertThat(old.recurrence?.freq).isEqualTo(RecurrenceFreq.MONTHLY)
+            assertThat(old.recurrence?.monthly).isEqualTo(MonthlyRule.SameDay)
+            assertThat(old.kind).isEqualTo(EventKind.BIRTHDAY) // a v7 column, read past the new ones
+
+            val secondTuesday = old.copy(
+                recurrence = old.recurrence!!.copy(monthly = MonthlyRule.NthWeekday(2, Weekday.TUESDAY)),
+            )
+            runBlocking { eventDao().upsert(secondTuesday.toEntity(createdAt = 0, updatedAt = 0)) }
+            assertThat(runBlocking { eventDao().getById(1) }!!.toDomain().recurrence?.monthly)
+                .isEqualTo(MonthlyRule.NthWeekday(2, Weekday.TUESDAY))
+            close()
+        }
+    }
+
     /** The chain must land on the version the app declares, or the next upgrade replays it. */
     @Test
     fun theUserVersionIsStampedAtTheSchemaVersionTheAppDeclares() {
@@ -362,6 +398,30 @@ class MigrationsTest {
         }
     }
 
+    /**
+     * A v7 database built from the DDL Room exported to `app/schemas/…/7.json`, holding one monthly
+     * series (a birthday, to see a v7 column read back too), stamped `user_version = 7`.
+     */
+    private fun seedVersion7Database() {
+        val dbFile = context.getDatabasePath(AppDatabase.DATABASE_NAME)
+        dbFile.parentFile?.mkdirs()
+        val key = keyManager.getOrCreatePassphrase()
+        SQLiteDatabase.openOrCreateDatabase(dbFile.absolutePath, key, null, null).use { v7 ->
+            V7_DDL.forEach(v7::execSQL)
+            v7.execSQL(
+                "INSERT INTO calendars (id, name, color, visible, is_default, created_at) " +
+                    "VALUES (1, 'Perso', 0, 1, 1, 0)",
+            )
+            v7.execSQL(
+                "INSERT INTO events (id, calendar_id, title, start_utc_millis, end_utc_millis, time_zone, " +
+                    "all_day, rrule_freq, rrule_interval, rrule_by_weekdays, rrule_exdates, kind, " +
+                    "created_at, updated_at) VALUES (1, 1, 'Club', $SEED_START_MILLIS, $SEED_END_MILLIS, " +
+                    "'Europe/Paris', 0, 2, 1, '', '', 1, 0, 0)",
+            )
+            v7.execSQL("PRAGMA user_version = 7")
+        }
+    }
+
     private fun clearDatabaseFiles() {
         val dbFile = context.getDatabasePath(AppDatabase.DATABASE_NAME)
         SIDECARS.forEach { suffix -> File(dbFile.path + suffix).delete() }
@@ -402,6 +462,33 @@ class MigrationsTest {
             "CREATE INDEX IF NOT EXISTS `index_events_calendar_id` ON `events` (`calendar_id`)",
             "CREATE INDEX IF NOT EXISTS `index_events_start_utc_millis` ON `events` (`start_utc_millis`)",
             "CREATE INDEX IF NOT EXISTS `index_events_end_utc_millis` ON `events` (`end_utc_millis`)",
+            "CREATE TABLE IF NOT EXISTS `reminders` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`event_id` INTEGER NOT NULL, `minutes_before` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`event_id`) REFERENCES `events`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE INDEX IF NOT EXISTS `index_reminders_event_id` ON `reminders` (`event_id`)",
+        )
+
+        /** Verbatim from `app/schemas/com.filestech.agenda_tech.data.local.db.AppDatabase/7.json`. */
+        val V7_DDL = listOf(
+            "CREATE TABLE IF NOT EXISTS `calendars` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`name` TEXT NOT NULL, `color` INTEGER NOT NULL, `visible` INTEGER NOT NULL, " +
+                "`is_default` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `source_id` TEXT)",
+            "CREATE INDEX IF NOT EXISTS `index_calendars_source_id` ON `calendars` (`source_id`)",
+            "CREATE TABLE IF NOT EXISTS `events` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`calendar_id` INTEGER NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `location` TEXT, " +
+                "`address` TEXT, `postal_code` TEXT, `city` TEXT, `gps_coordinates` TEXT, " +
+                "`start_utc_millis` INTEGER NOT NULL, `end_utc_millis` INTEGER NOT NULL, `time_zone` TEXT NOT NULL, " +
+                "`all_day` INTEGER NOT NULL, `rrule_freq` INTEGER, `rrule_interval` INTEGER NOT NULL, " +
+                "`rrule_by_weekdays` TEXT NOT NULL, `rrule_count` INTEGER, `rrule_until` INTEGER, " +
+                "`rrule_exdates` TEXT NOT NULL, `recurrence_parent_id` INTEGER, `original_start` INTEGER, " +
+                "`source_uid` TEXT, `kind` INTEGER NOT NULL DEFAULT 0, `color_override` INTEGER, " +
+                "`created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`calendar_id`) REFERENCES `calendars`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            "CREATE INDEX IF NOT EXISTS `index_events_calendar_id` ON `events` (`calendar_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_events_start_utc_millis` ON `events` (`start_utc_millis`)",
+            "CREATE INDEX IF NOT EXISTS `index_events_end_utc_millis` ON `events` (`end_utc_millis`)",
+            "CREATE INDEX IF NOT EXISTS `index_events_recurrence_parent_id` ON `events` (`recurrence_parent_id`)",
+            "CREATE INDEX IF NOT EXISTS `index_events_calendar_id_source_uid` ON `events` (`calendar_id`, `source_uid`)",
             "CREATE TABLE IF NOT EXISTS `reminders` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                 "`event_id` INTEGER NOT NULL, `minutes_before` INTEGER NOT NULL, " +
                 "FOREIGN KEY(`event_id`) REFERENCES `events`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",

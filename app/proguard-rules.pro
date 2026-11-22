@@ -19,7 +19,9 @@
 -keep class * extends androidx.room.RoomDatabase { *; }
 -dontwarn androidx.room.paging.**
 
-# --- WorkManager (gelé en 2.7.1) ----------------------------------------------
+# --- WorkManager (2.7.1 jusqu'à la 1.3.4, 2.12.0 depuis la 1.4.0) --------------
+# Depuis la 2.8, WorkManager livre lui-même la règle ci-dessous ; elle est gardée, sans effet de plus,
+# parce qu'une montée ou une descente future de WorkManager ne doit pas rouvrir l'issue #37 en silence.
 # Tout travail PONCTUEL passe par un InputMerger que WorkManager instancie par réflexion
 # (Class.newInstance) avant de lancer le worker. Sa propre règle, `-keep class * extends
 # androidx.work.InputMerger`, garde la classe mais pas son constructeur : en mode complet de R8

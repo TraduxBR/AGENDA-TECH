@@ -37,8 +37,9 @@ The APK is **universal** (works on every device, no variant to pick) and **signe
   Switzerland, the United Kingdom, the United States), national ones, worked out on the phone, off by
   default — checked day by day from 1990 (1991 for Germany, 2008 for Spain) to 2060 against an
   independent reference.
-- **Recurrence** (RFC 5545): daily / weekly (chosen days) / monthly / yearly, with interval, ending
-  after N occurrences or on a date, and **editing/deleting a single occurrence** (the iCalendar
+- **Recurrence** (RFC 5545): daily / weekly (chosen days) / monthly — on a day number, by position
+  (the second Tuesday, the last Friday) or on the last day — / yearly, with interval, ending after N
+  occurrences or on a date, and **editing/deleting a single occurrence** (the iCalendar
   `RECURRENCE-ID` model).
 - **Reminders** via exact alarms, re-armed after a reboot: preset delays or a free value, and your
   choice of sound (a system ringtone or your own audio file).
@@ -56,7 +57,9 @@ The APK is **universal** (works on every device, no variant to pick) and **signe
 - **`.ics` import / export** (RFC 5545) through the system file picker — an interchange format,
   which does not replace the backup (it loses reminders, colours and the calendar structure).
 - **Import from the device calendar** (Google, Exchange, local calendars), **read-only** — the app
-  copies what is already synced onto the phone, **with no network**.
+  copies what is already synced onto the phone, **with no network**. With either import, a repeating
+  event whose rule the app cannot reproduce (by week number, hourly…) arrives as its first date only,
+  and the import says how many — never as a series on dates its author did not choose.
 - **Search** across the whole calendar (title, description, place, address, city) — accent- and
   case-insensitive: "reunion" finds "Réunion".
 - **Optional lock** with a PIN and/or biometrics.

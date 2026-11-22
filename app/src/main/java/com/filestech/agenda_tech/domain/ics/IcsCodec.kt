@@ -2,6 +2,7 @@ package com.filestech.agenda_tech.domain.ics
 
 import com.filestech.agenda_tech.core.time.DAY_MILLIS
 import com.filestech.agenda_tech.domain.model.EventKind
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceFreq
 import com.filestech.agenda_tech.domain.model.RecurrenceRule
 import com.filestech.agenda_tech.core.text.BidiSanitizer
@@ -16,9 +17,9 @@ import java.time.format.DateTimeFormatter
 
 /**
  * Pure RFC 5545 (`.ics`) codec for the subset Agenda Tech uses — VEVENT with DTSTART/DTEND,
- * SUMMARY/DESCRIPTION/LOCATION, RRULE (FREQ/INTERVAL/BYDAY/COUNT/UNTIL) and EXDATE. No Android;
- * exhaustively unit-testable, and lossless on its own round-trip (time zones preserved via the
- * `TZID` parameter).
+ * SUMMARY/DESCRIPTION/LOCATION, RRULE (read by [RRuleReader], which says what it reproduces) and
+ * EXDATE. No Android; exhaustively unit-testable, and lossless on its own round-trip (time zones
+ * preserved via the `TZID` parameter).
  *
  * Deliberate scope limits (documented, safe): no VTIMEZONE block is emitted (the `TZID` name is
  * enough for our own round-trip and for well-known zones in other apps), and VALARM/reminders are
@@ -79,7 +80,6 @@ object IcsCodec {
         Weekday.MONDAY to "MO", Weekday.TUESDAY to "TU", Weekday.WEDNESDAY to "WE",
         Weekday.THURSDAY to "TH", Weekday.FRIDAY to "FR", Weekday.SATURDAY to "SA", Weekday.SUNDAY to "SU",
     )
-    private val BYDAY_TO_ISO = ISO_TO_BYDAY.entries.associate { (k, v) -> v to k }
 
     // --- Encode --------------------------------------------------------------
 
@@ -172,6 +172,14 @@ object IcsCodec {
         if (rule.interval > 1) append(";INTERVAL=").append(rule.interval)
         if (rule.freq == RecurrenceFreq.WEEKLY && rule.byWeekdays.isNotEmpty()) {
             append(";BYDAY=").append(rule.byWeekdays.sortedBy { it.isoValue }.joinToString(",") { ISO_TO_BYDAY.getValue(it) })
+        }
+        // The plain monthly rule writes nothing: every reader takes the start's day number by default.
+        // The positions are written the RFC 5545 way rather than Outlook's BYSETPOS form, which says the
+        // same thing in two parts and which some readers do not know.
+        when (val monthly = rule.monthly) {
+            MonthlyRule.SameDay -> Unit
+            is MonthlyRule.NthWeekday -> append(";BYDAY=").append(monthly.ordinal).append(ISO_TO_BYDAY.getValue(monthly.weekday))
+            MonthlyRule.LastDay -> append(";BYMONTHDAY=").append(MonthlyRule.LAST)
         }
         rule.count?.let { append(";COUNT=").append(it) }
         rule.untilUtcMillis?.let { append(";UNTIL=").append(utcStamp(it)) }
@@ -285,8 +293,11 @@ object IcsCodec {
             dtStart.value.trim().endsWith("Z") -> "UTC"
             else -> TimeZones.normalize(dtStart.params["TZID"], defaultZone)
         }
-        val recurrence = props.first("RRULE")
-            ?.let { parseRRule(it.value, props["EXDATE"].orEmpty(), defaultZone) }
+        // The start's date in the zone just stored — the one the expander anchors the series to, and so
+        // the one a position in the month ("the second Tuesday") has to be counted in.
+        val startDate = Instant.ofEpochMilli(start).atZone(TimeZones.resolve(zoneId, defaultZone)).toLocalDate()
+        val reading = props.first("RRULE")?.value?.takeIf { it.isNotBlank() }
+            ?.let { readRRule(it, startDate, props["EXDATE"].orEmpty(), defaultZone) }
         return IcsEvent(
             title = summary,
             description = props.first("DESCRIPTION")?.value?.let(IcsLines::unescapeText)?.let(::sanitizeText),
@@ -295,7 +306,8 @@ object IcsCodec {
             endUtcMillis = maxOf(end, start),
             timeZoneId = zoneId,
             allDay = allDay,
-            recurrence = recurrence,
+            recurrence = (reading as? RRuleReading.Reproduced)?.rule,
+            firstDateOnly = reading == RRuleReading.FirstDateOnly,
             // Audit F2/F4 - UID bypassed the sanitiser every other imported string goes through.
             // Line breaks and control characters are dropped outright: never legitimate in a UID,
             // and they are the injection primitive.
@@ -323,50 +335,33 @@ object IcsCodec {
         }
     }.getOrNull()
 
-    private fun parseRRule(
+    /**
+     * The RRULE through the reader both imports share ([RRuleReader]); what stays here is what only a file
+     * has — EXDATE lines with parameters of their own, and an UNTIL read like any other date of the file.
+     *
+     * COUNT below 1, and COUNT together with UNTIL, are settled by the reader: throwing on them used to
+     * strip the recurrence from an otherwise fine event.
+     */
+    private fun readRRule(
         value: String,
+        startDate: LocalDate,
         exDateLines: List<IcsProperty>,
         defaultZone: ZoneId,
-    ): RecurrenceRule? = runCatching {
-        val parts = value.split(";").mapNotNull {
-            val kv = it.split("=", limit = 2)
-            if (kv.size == 2) kv[0].uppercase() to kv[1] else null
-        }.toMap()
-        val freq = RecurrenceFreq.entries.firstOrNull { it.name == parts["FREQ"]?.uppercase() } ?: return null
+    ): RRuleReading {
         // Each EXDATE line carries its own parameters, so the lines are parsed separately rather than
         // concatenated: two lines may legitimately name different TZIDs, and a single merged parameter
         // set would read one of them in the other's zone. Duplicates are dropped — the same instant
-        // excluded twice is the same exclusion.
+        // excluded twice is the same exclusion. (They were once parsed and then dropped on the floor:
+        // every cancelled occurrence came back to life on import, including from our own export.)
         val exDates = exDateLines.flatMap { line ->
             line.value.split(",").mapNotNull { token ->
                 parseDateTime(IcsProperty("EXDATE", line.params, token.trim()), defaultZone)
             }
         }.distinct()
-        // COUNT below 1 is not a bound, and COUNT together with UNTIL is not a valid RRULE — both
-        // violate an invariant of RecurrenceRule, and since this whole function is wrapped in
-        // runCatching, throwing would silently strip the recurrence from an otherwise fine event.
-        // Drop the bad bound instead, and let COUNT win over UNTIL exactly as the device importer
-        // does (DeviceEventMapper), so the same file reads the same way through either path.
-        val count = parts["COUNT"]?.toIntOrNull()?.takeIf { it >= 1 }
-        val until = if (count == null) {
-            parts["UNTIL"]?.let { parseDateTime(IcsProperty("UNTIL", emptyMap(), it), defaultZone) }
-        } else {
-            null
+        return RRuleReader.read(value, startDate, exDates) { until ->
+            parseDateTime(IcsProperty("UNTIL", emptyMap(), until), defaultZone)
         }
-        RecurrenceRule(
-            freq = freq,
-            interval = parts["INTERVAL"]?.toIntOrNull()
-                ?.coerceIn(1, RecurrenceRule.MAX_INTERVAL) ?: 1,
-            byWeekdays = parts["BYDAY"]?.split(",")?.mapNotNull { BYDAY_TO_ISO[it.trim().uppercase()] }?.toSet().orEmpty(),
-            count = count,
-            untilUtcMillis = until,
-            // The EXDATEs were parsed just above and then dropped on the floor: every cancelled
-            // occurrence came back to life on import, including on a round-trip through our own
-            // export, which does write them. detekt had been reporting the symptom as an unused
-            // `exDates` property.
-            exDatesUtcMillis = exDates,
-        )
-    }.getOrNull()
+    }
 
     /**
      * SEC-ICS2 — strip Unicode bidirectional-control characters from imported free text and cap its

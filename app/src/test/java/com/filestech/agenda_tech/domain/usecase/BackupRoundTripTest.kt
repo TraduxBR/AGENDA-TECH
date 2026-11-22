@@ -4,9 +4,12 @@ import com.filestech.agenda_tech.core.crypto.AeadCipher
 import com.filestech.agenda_tech.core.crypto.BackupEnvelope
 import com.filestech.agenda_tech.core.result.AppError
 import com.filestech.agenda_tech.core.result.Outcome
+import com.filestech.agenda_tech.domain.ImportLimits
+import com.filestech.agenda_tech.domain.backup.BackupPayload
 import com.filestech.agenda_tech.domain.model.Calendar
 import com.filestech.agenda_tech.domain.model.CalendarColor
 import com.filestech.agenda_tech.domain.model.Event
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceFreq
 import com.filestech.agenda_tech.domain.model.RecurrenceRule
 import com.filestech.agenda_tech.domain.model.Weekday
@@ -99,6 +102,41 @@ class BackupRoundTripTest {
         assertThat(backupRepo.calendars).containsExactly(perso, travail)
         assertThat(backupRepo.events).containsExactly(weekly, meeting)
         assertThat(backupRepo.reminders).containsExactly(10L, listOf(10, 1440), 11L, listOf(30))
+    }
+
+    // --- Envelope version: a build up to 1.3.4 must refuse what it would restore wrong -------------
+
+    @Test
+    fun `an agenda without a monthly position is written as version 1, which older builds read`() = runTest {
+        seedAgenda()
+
+        assertThat(exportBytes()[ENVELOPE_VERSION_OFFSET]).isEqualTo(BackupEnvelope.ENVELOPE_V1)
+    }
+
+    @Test
+    fun `an agenda holding a monthly position is written as version 2, and comes back whole`() = runTest {
+        seedAgenda()
+        val lastFriday = Event(
+            id = 12,
+            calendarId = 1,
+            title = "Club",
+            startUtcMillis = 1_800_000_000_000,
+            endUtcMillis = 1_800_003_600_000,
+            timeZoneId = "Europe/Paris",
+            recurrence = RecurrenceRule(
+                freq = RecurrenceFreq.MONTHLY,
+                monthly = MonthlyRule.NthWeekday(MonthlyRule.LAST, Weekday.FRIDAY),
+            ),
+        )
+        eventRepo.rows[lastFriday.id] = lastFriday
+
+        val file = exportBytes()
+        backupRepo.calendars.clear(); backupRepo.events.clear(); backupRepo.reminders.clear()
+
+        assertThat(file[ENVELOPE_VERSION_OFFSET]).isEqualTo(BackupEnvelope.ENVELOPE_V2)
+        assertThat(restore(password(), file)).isInstanceOf(Outcome.Success::class.java)
+        assertThat(backupRepo.events.single { it.id == 12L }.recurrence?.monthly)
+            .isEqualTo(MonthlyRule.NthWeekday(MonthlyRule.LAST, Weekday.FRIDAY))
     }
 
     @Test
@@ -262,6 +300,54 @@ class BackupRoundTripTest {
         assertThat((result as Outcome.Failure).error).isInstanceOf(AppError.Validation::class.java)
     }
 
+    /** The series of [seedAgenda] with [count] distinct cancelled occurrences, a week apart. */
+    private fun withExDates(count: Int): (BackupPayload) -> BackupPayload =
+        { payload ->
+            payload.copy(
+                events = payload.events.map { event ->
+                    if (event.rruleFreqRaw == null) {
+                        event
+                    } else {
+                        event.copy(rruleExDatesUtcMillis = List(count) { event.startUtcMillis + (it + 1) * WEEK_MILLIS })
+                    }
+                },
+            )
+        }
+
+    @Test
+    fun `a series carrying more cancelled occurrences than a database cell holds is refused whole`() = runTest {
+        // Security deep-dive of 2026-11-22: one series' EXDATEs are one text cell, and a row past the
+        // 2 MB CursorWindow makes every query of it throw — the agenda would no longer open. The import
+        // reader caps them; a restore does not go through it.
+        seedAgenda()
+        val tampered = reseal(exportBytes(), withExDates(ImportLimits.MAX_EXDATES_PER_SERIES + 1))
+
+        val result = restore(password(), tampered)
+
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((result as Outcome.Failure).error).isInstanceOf(AppError.Validation::class.java)
+        assertThat(backupRepo.events).containsExactly(weekly, meeting)
+    }
+
+    @Test
+    fun `a series exactly at that ceiling still restores — no real backup is refused`() = runTest {
+        seedAgenda()
+        val atCeiling = reseal(exportBytes(), withExDates(ImportLimits.MAX_EXDATES_PER_SERIES))
+
+        val result = restore(password(), atCeiling)
+
+        assertThat(result).isInstanceOf(Outcome.Success::class.java)
+        val restored = backupRepo.events.single { it.recurrence != null }
+        assertThat(restored.recurrence!!.exDatesUtcMillis).hasSize(ImportLimits.MAX_EXDATES_PER_SERIES)
+    }
+
+    private companion object {
+        const val WEEK_MILLIS = 7L * 24 * 60 * 60 * 1000
+
+        /** Header layout: magic(5) | envVersion(1) | … — see BackupEnvelope. */
+        const val ENVELOPE_VERSION_OFFSET = 5
+    }
+
     /** Decrypt, mutate the payload, re-encrypt — forges the file an attacker with the password could. */
     private fun reseal(
         file: ByteArray,
@@ -271,6 +357,6 @@ class BackupRoundTripTest {
         val payload = com.filestech.agenda_tech.domain.backup.BackupCodec
             .decodeFromJson(plaintext.toString(Charsets.UTF_8))
         val json = com.filestech.agenda_tech.domain.backup.BackupCodec.encodeToJson(mutate(payload))
-        return (envelope.seal(password(), json.toByteArray(Charsets.UTF_8)) as Outcome.Success).value
+        return (envelope.seal(password(), json.toByteArray(Charsets.UTF_8), BackupEnvelope.ENVELOPE_V1) as Outcome.Success).value
     }
 }
