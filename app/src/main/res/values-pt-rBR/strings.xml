@@ -275,7 +275,7 @@
     <string name="holiday_christmas">Natal</string>
     <string name="holiday_st_stephen">Dia de Santo Estêvão</string>
     <string name="holiday_second_christmas_day">Segundo dia de Natal</string>
-    <string name="holiday_boxing_day">Dia de Santo Estêvão</string>
+    <string name="holiday_boxing_day">Boxing Day</string>
     <string name="holiday_national_day">Dia Nacional</string>
     <string name="holiday_victory_1945">Dia da Vitória na Europa</string>
     <string name="holiday_armistice_1918">Dia do Armistício</string>
@@ -294,7 +294,7 @@
     <string name="holiday_special_bank_holiday">Feriado bancário especial</string>
     <string name="holiday_martin_luther_king_day">Dia de Martin Luther King Jr.</string>
     <string name="holiday_washingtons_birthday">Aniversário de Washington</string>
-    <string name="holiday_memorial_day">Dia da Memória</string>
+    <string name="holiday_memorial_day">Memorial Day</string>
     <string name="holiday_juneteenth">Juneteenth</string>
     <string name="holiday_independence_day">Dia da Independência</string>
     <string name="holiday_labor_day_us">Dia do Trabalho</string>
@@ -516,7 +516,7 @@
     <string name="search_prompt">Pesquise um evento por título, descrição, local ou cidade. A pesquisa não diferencia maiúsculas de minúsculas nem exige acentos.</string>
     <string name="search_no_results">Nenhum resultado para “%1$s”.</string>
     <string name="search_no_results_hint">Verifique a ortografia ou tente uma palavra mais curta.</string>
-    <string name="search_section_upcoming">Futuros</string>
+    <string name="search_section_upcoming">Próximos</string>
     <string name="search_section_past">Passados</string>
     <string name="search_hidden_calendar">calendário oculto</string>
 
@@ -544,7 +544,7 @@
     <string name="editor_kind_event">Evento</string>
     <string name="editor_kind_birthday">Aniversário</string>
     <string name="editor_birthday_date">Data de nascimento</string>
-    <string name="editor_birthday_hint">Repete-se todos os anos, durante o dia inteiro. Se não souber o ano, mantenha o valor como está — assim, a idade não será exibida.</string>
+    <string name="editor_birthday_hint">Repete todos os anos, durante o dia inteiro. Se não souber o ano, mantenha o valor como está — assim, a idade não será exibida.</string>
     <!-- Idade indicada por uma ocorrência de aniversário, por exemplo, "42 anos". -->
     <plurals name="birthday_age">
         <item quantity="one">%1$d ano</item>

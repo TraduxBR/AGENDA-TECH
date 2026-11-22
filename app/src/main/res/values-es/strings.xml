@@ -472,7 +472,7 @@
     <string name="backup_intro_title">Una copia completa y cifrada</string>
     <string name="backup_intro_body">El archivo lo contiene todo: calendarios, eventos, repeticiones, lugares y recordatorios. Está cifrado con su contraseña (AES-256): nadie puede abrirlo sin esa contraseña, ni siquiera nosotros. Guárdelo donde quiera: memoria USB, ordenador, nube.</string>
     <string name="backup_warn_title">La contraseña no se puede recuperar</string>
-    <string name="backup_warn_body">En una copia que usted exporta a mano no se guarda en ninguna parte: si la olvida, el archivo queda ilegible para siempre. Guárdela en un gestor de contraseñas. Las copias automáticas son la excepción: tienen que conservar su contraseña en este teléfono, protegida por su hardware seguro, para poder funcionar sin usted.</string>
+    <string name="backup_warn_body">La contraseña de una copia que usted exporta a mano no se guarda en ninguna parte: si la olvida, el archivo queda ilegible para siempre. Guárdela en un gestor de contraseñas. Las copias automáticas son la excepción: tienen que conservar su contraseña en este teléfono, protegida por su hardware seguro, para poder funcionar sin usted.</string>
     <string name="backup_export">Exportar una copia</string>
     <string name="backup_export_sub">Crear un archivo .atbak cifrado</string>
     <string name="backup_restore">Restaurar una copia</string>

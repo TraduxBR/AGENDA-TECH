@@ -147,7 +147,11 @@ internal object RRuleReader {
     private fun boundsOf(parts: Map<String, String>, parseUntil: (String) -> Long?): Bounds? {
         val countText = parts["COUNT"]
         val untilText = parts["UNTIL"]
-        val count = countText?.toIntOrNull()?.takeIf { it >= 1 }
+        // RFC 5545: `count = 1*DIGIT`. One past Int's range is still a positive COUNT — more occurrences than
+        // any scan reaches — and it wins over an UNTIL beside it like every other COUNT (final review, D1).
+        val count = countText
+            ?.let { text -> text.toIntOrNull() ?: Int.MAX_VALUE.takeIf { text.all(Char::isDigit) } }
+            ?.takeIf { it >= 1 }
         val until = if (count == null) untilText?.let(parseUntil) else null
         // No bound read, though the rule named one: an unreadable UNTIL, or a COUNT that is no bound.
         val namedButUnread = count == null && until == null && (countText != null || untilText != null)

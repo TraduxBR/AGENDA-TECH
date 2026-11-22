@@ -1,6 +1,6 @@
 v1.4.0 — Récurrence mensuelle par position
 
-• Chaque mois le 2ᵉ mardi, le dernier
+• Chaque mois le 2e mardi, le dernier
   vendredi ou le dernier jour du mois.
 • Les séries importées tombent à leurs
   vraies dates ; une règle impossible à

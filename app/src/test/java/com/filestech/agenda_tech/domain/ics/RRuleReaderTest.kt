@@ -159,6 +159,10 @@ class RRuleReaderTest {
             .isEqualTo(reproduced(RecurrenceRule(RecurrenceFreq.WEEKLY, untilUtcMillis = until)))
         // A valid COUNT decides the end; the UNTIL beside it is not read, readable or not.
         assertThat(taken("FREQ=WEEKLY;COUNT=3;UNTIL=nonsense")).isEqualTo(reproduced(RecurrenceRule(RecurrenceFreq.WEEKLY, count = 3)))
+        // So does a COUNT past Int's range (RFC 5545: 1*DIGIT): it was read as no COUNT, and the UNTIL beside
+        // it then ended the series.
+        assertThat(taken("FREQ=WEEKLY;COUNT=99999999999;UNTIL=20271231T225959Z"))
+            .isEqualTo(reproduced(RecurrenceRule(RecurrenceFreq.WEEKLY, count = Int.MAX_VALUE)))
     }
 
     @Test
