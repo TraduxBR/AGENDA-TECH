@@ -5,7 +5,8 @@ import com.filestech.agenda_tech.domain.model.DeviceEvent
 import com.filestech.agenda_tech.domain.model.Event
 import com.filestech.agenda_tech.domain.recurrence.RecurrenceExpander
 import com.google.common.truth.Truth.assertThat
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -60,36 +61,41 @@ class ImportedSeriesDatesTest {
             to.atStartOfDay(paris).toInstant().toEpochMilli(),
         ).map { Instant.ofEpochMilli(it.startUtcMillis).atZone(paris).toLocalDate() }
 
-    private fun bothImports(rrule: String, start: LocalDateTime) = listOf(fromFile(rrule, start), fromDevice(rrule, start))
+    /** [path] is "file" or "device": each import is its own case, so each one's result is seen. */
+    private fun imported(path: String, rrule: String, start: LocalDateTime): Event =
+        if (path == "file") fromFile(rrule, start) else fromDevice(rrule, start)
 
-    @Test
-    fun `the second Tuesday of the month recurs on the second Tuesday, through both imports`() {
-        bothImports("FREQ=MONTHLY;BYDAY=2TU", LocalDateTime.of(2026, 11, 10, 9, 0)).forEach { event ->
-            assertThat(datesBetween(event, LocalDate.of(2026, 12, 1), LocalDate.of(2027, 1, 1)))
-                .containsExactly(LocalDate.of(2026, 12, 8))
-        }
+    @ParameterizedTest
+    @ValueSource(strings = ["file", "device"])
+    fun `the second Tuesday of the month recurs on the second Tuesday`(path: String) {
+        val event = imported(path, "FREQ=MONTHLY;BYDAY=2TU", LocalDateTime.of(2026, 11, 10, 9, 0))
+
+        assertThat(datesBetween(event, LocalDate.of(2026, 12, 1), LocalDate.of(2027, 1, 1)))
+            .containsExactly(LocalDate.of(2026, 12, 8))
     }
 
-    @Test
-    fun `every weekday said with DAILY leaves the weekend out, through both imports`() {
-        bothImports("FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR", LocalDateTime.of(2026, 11, 16, 9, 0)).forEach { event ->
-            assertThat(datesBetween(event, LocalDate.of(2026, 11, 16), LocalDate.of(2026, 11, 23))).containsExactly(
-                LocalDate.of(2026, 11, 16),
-                LocalDate.of(2026, 11, 17),
-                LocalDate.of(2026, 11, 18),
-                LocalDate.of(2026, 11, 19),
-                LocalDate.of(2026, 11, 20),
-            ).inOrder()
-        }
+    @ParameterizedTest
+    @ValueSource(strings = ["file", "device"])
+    fun `every weekday said with DAILY leaves the weekend out`(path: String) {
+        val event = imported(path, "FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR", LocalDateTime.of(2026, 11, 16, 9, 0))
+
+        assertThat(datesBetween(event, LocalDate.of(2026, 11, 16), LocalDate.of(2026, 11, 23))).containsExactly(
+            LocalDate.of(2026, 11, 16),
+            LocalDate.of(2026, 11, 17),
+            LocalDate.of(2026, 11, 18),
+            LocalDate.of(2026, 11, 19),
+            LocalDate.of(2026, 11, 20),
+        ).inOrder()
     }
 
-    @Test
-    fun `a rule neither import can follow keeps its first date and invents no other`() {
+    @ParameterizedTest
+    @ValueSource(strings = ["file", "device"])
+    fun `a rule neither import can follow keeps its first date and invents no other`(path: String) {
         // The first and third Tuesday: not representable here. It used to become "the 3rd of every month".
-        bothImports("FREQ=MONTHLY;BYDAY=1TU,3TU", LocalDateTime.of(2026, 11, 3, 9, 0)).forEach { event ->
-            assertThat(datesBetween(event, LocalDate.of(2026, 11, 1), LocalDate.of(2027, 11, 1)))
-                .containsExactly(LocalDate.of(2026, 11, 3))
-        }
+        val event = imported(path, "FREQ=MONTHLY;BYDAY=1TU,3TU", LocalDateTime.of(2026, 11, 3, 9, 0))
+
+        assertThat(datesBetween(event, LocalDate.of(2026, 11, 1), LocalDate.of(2027, 11, 1)))
+            .containsExactly(LocalDate.of(2026, 11, 3))
     }
 
     private companion object {
