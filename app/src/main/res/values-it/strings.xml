@@ -346,6 +346,7 @@
     <string name="about_report_issue">Segnala un problema</string>
     <string name="about_license_name">Apache License 2.0</string>
     <string name="about_privacy_policy">Informativa sulla privacy</string>
+    <string name="about_thanks_body">Grazie a tutte le persone che segnalano un problema, provano una nuova versione, propongono un’idea o traducono l’app: con il loro aiuto Agenda Tech migliora.</string>
     <string name="about_credits_body">Realizzata con cura da %1$s. Software libero e open source: il codice è pubblico e verificabile.</string>
     <string name="about_legal_body">© %1$s %2$s — Apache License 2.0</string>
 

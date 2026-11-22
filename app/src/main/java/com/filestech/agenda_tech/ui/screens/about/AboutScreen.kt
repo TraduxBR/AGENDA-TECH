@@ -65,12 +65,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -79,6 +89,9 @@ import androidx.core.content.pm.PackageInfoCompat
 import com.filestech.agenda_tech.ui.theme.LogoShape
 import com.filestech.agenda_tech.R
 import timber.log.Timber
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * About screen, mirroring the Files Tech design language (cf. SMS Tech / PDF Tech): centered icon
@@ -187,6 +200,10 @@ fun AboutScreen(onBack: () -> Unit) {
             )
 
             Spacer(Modifier.size(24.dp))
+            // A thank-you to those who report, test, suggest and translate, just above "Made with care by", as in
+            // SMS Tech (Patrice, 2026-11-22). It names no one: see the comment on `about_thanks_body`.
+            ThanksNote()
+            Spacer(Modifier.size(12.dp))
             Text(
                 text = stringResource(R.string.about_credits_body, AUTHOR_NAME),
                 style = MaterialTheme.typography.bodySmall,
@@ -206,6 +223,127 @@ fun AboutScreen(onBack: () -> Unit) {
         }
     }
 }
+
+// --- Thank-you note -----------------------------------------------------------
+
+/**
+ * The thank-you note, framed by a light grey border that sets it apart from "Made with care by" and the
+ * legal line below, and headed by folded hands — the same note as SMS Tech's and Notes Tech's.
+ *
+ * The folded hands are the emoji U+1F64F (Unicode 6.0, on every Android version this app supports): the
+ * Material icon set has none. It is decorative, so a screen reader reads only the text. The border follows
+ * the theme (`outlineVariant`: light grey in light mode, discreet in dark mode).
+ */
+@Composable
+private fun ThanksNote() {
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(width = 1.dp, color = MaterialTheme.colorScheme.outlineVariant, shape = shape)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        // An emoji keeps its own colours whatever the text colour. WHITE hands with a grey outline, and a line
+        // between the two hands, in three layers:
+        // - the silhouette in grey, drawn all around itself: the outline;
+        // - the emoji brought close to white, its inner strokes kept pale (see [towardsWhite]);
+        // - the join of the hands, wiped out with the other strokes: a grey line down the middle, clipped to the
+        //   emoji's shape (`DstIn`). Every font draws 🙏 symmetric, the hands joined at the centre.
+        // A mid grey in both themes: `outline` is the frame's light grey, too pale for an outline, and the
+        // secondary text grey at full strength made the hands look heavy.
+        val outline = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = OUTLINE_OPACITY)
+        Text(
+            text = FOLDED_HANDS,
+            fontSize = 22.sp,
+            modifier = Modifier
+                .clearAndSetSemantics {}
+                .drawWithCache {
+                    val width = OUTLINE_WIDTH.toPx()
+                    val area = Rect(-width, -width, size.width + width, size.height + width)
+                    val outlinePaint = Paint().apply { colorFilter = ColorFilter.tint(outline, BlendMode.SrcIn) }
+                    val fillPaint = Paint().apply { colorFilter = ColorFilter.colorMatrix(towardsWhite(FLOOR)) }
+                    val maskPaint = Paint().apply { blendMode = BlendMode.DstIn }
+                    val middle = size.width / 2
+                    val offsets = (0 until OUTLINE_DIRECTIONS).map { i ->
+                        val angle = 2 * PI * i / OUTLINE_DIRECTIONS
+                        Offset((cos(angle) * width).toFloat(), (sin(angle) * width).toFloat())
+                    }
+                    onDrawWithContent {
+                        drawIntoCanvas { canvas ->
+                            offsets.forEach { offset ->
+                                canvas.saveLayer(area, outlinePaint)
+                                translate(offset.x, offset.y) { this@onDrawWithContent.drawContent() }
+                                canvas.restore()
+                            }
+                            canvas.saveLayer(area, fillPaint)
+                            drawContent()
+                            canvas.restore()
+                            canvas.saveLayer(area, Paint())
+                            drawLine(outline, Offset(middle, 0f), Offset(middle, size.height), JOIN_WIDTH.toPx())
+                            canvas.saveLayer(area, maskPaint)
+                            drawContent()
+                            canvas.restore()
+                            canvas.restore()
+                        }
+                    }
+                },
+        )
+        Spacer(Modifier.size(6.dp))
+        Text(
+            text = stringResource(R.string.about_thanks_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** Folded hands, U+1F64F (UTF-8 source). */
+private const val FOLDED_HANDS = "🙏"
+
+/** The grey outline: its width, its strength, and the directions it is drawn in around the emoji. */
+private val OUTLINE_WIDTH = 1.5.dp
+private const val OUTLINE_OPACITY = 0.6f
+private const val OUTLINE_DIRECTIONS = 12
+
+/** The width of the line between the two hands, in the outline's grey. */
+private val JOIN_WIDTH = 1.dp
+
+/** The darkest grey the fill keeps — its inner strokes, pale: 0 would keep black, 1 a flat white. */
+private const val FLOOR = 0.72f
+
+/**
+ * A matrix that brings an image close to WHITE while keeping its relief, pale: each pixel takes its luminance
+ * (the weights of `ColorMatrix.setToSaturation(0)`), squeezed into [[floor], 1] — light turns white, dark strokes
+ * a light grey. Alpha is kept, so the shape stays the emoji's.
+ *
+ * ⚠️ The offset column is in 0-255 units, as Android's `ColorMatrix` reads it (Compose passes the values as is).
+ */
+internal fun towardsWhite(floor: Float): ColorMatrix {
+    val range = 1f - floor
+    val values = FloatArray(MATRIX_COLUMNS * MATRIX_ROWS)
+    for (row in 0 until ALPHA_ROW) {
+        values[row * MATRIX_COLUMNS] = LUMA_R * range
+        values[row * MATRIX_COLUMNS + 1] = LUMA_G * range
+        values[row * MATRIX_COLUMNS + 2] = LUMA_B * range
+        values[row * MATRIX_COLUMNS + OFFSET_COLUMN] = floor * MAX_8_BITS
+    }
+    // Row A: the input alpha, unchanged.
+    values[ALPHA_ROW * MATRIX_COLUMNS + ALPHA_ROW] = 1f
+    return ColorMatrix(values)
+}
+
+// Android's luminance weights (`ColorMatrix.setSaturation(0)`), and the shape of a 4 × 5 colour matrix.
+private const val LUMA_R = 0.213f
+private const val LUMA_G = 0.715f
+private const val LUMA_B = 0.072f
+private const val MATRIX_ROWS = 4
+private const val MATRIX_COLUMNS = 5
+private const val ALPHA_ROW = 3
+private const val OFFSET_COLUMN = 4
+private const val MAX_8_BITS = 255f
 
 // --- Header -----------------------------------------------------------------
 

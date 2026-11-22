@@ -338,6 +338,9 @@
     <string name="about_report_issue">Report an issue</string>
     <string name="about_license_name">Apache License 2.0</string>
     <string name="about_privacy_policy">Privacy policy</string>
+    <!-- Names no one: nobody agreed to appear in the app, and a list of names would miss someone at every
+         version (as in SMS Tech). Contributors are credited in CHANGELOG.md and TRANSLATING.md. -->
+    <string name="about_thanks_body">Thank you to everyone who reports a problem, tests a new version, suggests an idea or translates the app: Agenda Tech gets better with your help.</string>
     <string name="about_credits_body">Made with care by %1$s. Free and open-source software — the code is public and auditable.</string>
     <string name="about_legal_body">© %1$s %2$s — Apache License 2.0</string>
 
