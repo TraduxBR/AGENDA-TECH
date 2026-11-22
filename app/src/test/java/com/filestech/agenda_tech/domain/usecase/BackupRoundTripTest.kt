@@ -7,6 +7,7 @@ import com.filestech.agenda_tech.core.result.Outcome
 import com.filestech.agenda_tech.domain.model.Calendar
 import com.filestech.agenda_tech.domain.model.CalendarColor
 import com.filestech.agenda_tech.domain.model.Event
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceFreq
 import com.filestech.agenda_tech.domain.model.RecurrenceRule
 import com.filestech.agenda_tech.domain.model.Weekday
@@ -99,6 +100,41 @@ class BackupRoundTripTest {
         assertThat(backupRepo.calendars).containsExactly(perso, travail)
         assertThat(backupRepo.events).containsExactly(weekly, meeting)
         assertThat(backupRepo.reminders).containsExactly(10L, listOf(10, 1440), 11L, listOf(30))
+    }
+
+    // --- Envelope version: a build up to 1.3.4 must refuse what it would restore wrong -------------
+
+    @Test
+    fun `an agenda without a monthly position is written as version 1, which older builds read`() = runTest {
+        seedAgenda()
+
+        assertThat(exportBytes()[ENVELOPE_VERSION_OFFSET]).isEqualTo(BackupEnvelope.ENVELOPE_V1)
+    }
+
+    @Test
+    fun `an agenda holding a monthly position is written as version 2, and comes back whole`() = runTest {
+        seedAgenda()
+        val lastFriday = Event(
+            id = 12,
+            calendarId = 1,
+            title = "Club",
+            startUtcMillis = 1_800_000_000_000,
+            endUtcMillis = 1_800_003_600_000,
+            timeZoneId = "Europe/Paris",
+            recurrence = RecurrenceRule(
+                freq = RecurrenceFreq.MONTHLY,
+                monthly = MonthlyRule.NthWeekday(MonthlyRule.LAST, Weekday.FRIDAY),
+            ),
+        )
+        eventRepo.rows[lastFriday.id] = lastFriday
+
+        val file = exportBytes()
+        backupRepo.calendars.clear(); backupRepo.events.clear(); backupRepo.reminders.clear()
+
+        assertThat(file[ENVELOPE_VERSION_OFFSET]).isEqualTo(BackupEnvelope.ENVELOPE_V2)
+        assertThat(restore(password(), file)).isInstanceOf(Outcome.Success::class.java)
+        assertThat(backupRepo.events.single { it.id == 12L }.recurrence?.monthly)
+            .isEqualTo(MonthlyRule.NthWeekday(MonthlyRule.LAST, Weekday.FRIDAY))
     }
 
     @Test
@@ -262,6 +298,11 @@ class BackupRoundTripTest {
         assertThat((result as Outcome.Failure).error).isInstanceOf(AppError.Validation::class.java)
     }
 
+    private companion object {
+        /** Header layout: magic(5) | envVersion(1) | … — see BackupEnvelope. */
+        const val ENVELOPE_VERSION_OFFSET = 5
+    }
+
     /** Decrypt, mutate the payload, re-encrypt — forges the file an attacker with the password could. */
     private fun reseal(
         file: ByteArray,
@@ -271,6 +312,6 @@ class BackupRoundTripTest {
         val payload = com.filestech.agenda_tech.domain.backup.BackupCodec
             .decodeFromJson(plaintext.toString(Charsets.UTF_8))
         val json = com.filestech.agenda_tech.domain.backup.BackupCodec.encodeToJson(mutate(payload))
-        return (envelope.seal(password(), json.toByteArray(Charsets.UTF_8)) as Outcome.Success).value
+        return (envelope.seal(password(), json.toByteArray(Charsets.UTF_8), BackupEnvelope.ENVELOPE_V1) as Outcome.Success).value
     }
 }

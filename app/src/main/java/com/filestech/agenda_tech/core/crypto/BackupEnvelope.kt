@@ -29,6 +29,15 @@ import javax.inject.Singleton
  * change (notably to Argon2id) without invalidating files already written — a backup must still open
  * years later, which is the whole point of the artefact.
  *
+ * **The envelope version also says which builds may read the content.** [ENVELOPE_V1] is every file a
+ * build since the format's start restores faithfully; [ENVELOPE_V2] is a file whose content an older
+ * build would restore WRONG rather than refuse — today, a monthly series by position, which a build that
+ * predates them puts back on its day number. Those builds answer an envelope version above their own
+ * with "written by a newer version: update the app, do not delete the file" (measured on 1.3.4), which
+ * is the refusal wanted; an inner payload version would have read to them as a wrong password. So the
+ * choice is made per file, by the caller who knows the payload, and every file that does not need 2 is
+ * still written as 1 and still restores in an older build.
+ *
  * Key derivation is deliberate CPU work (~1s). Never call this on the main thread.
  */
 @Singleton
@@ -38,10 +47,15 @@ class BackupEnvelope @Inject constructor(
 
     private val secureRandom = SecureRandom()
 
-    /** Encrypts [plaintext] under [password]. The caller's [password] is wiped. */
-    fun seal(password: CharArray, plaintext: ByteArray): Outcome<ByteArray> {
+    /**
+     * Encrypts [plaintext] under [password], in a file of [envelopeVersion] ([ENVELOPE_V1] or
+     * [ENVELOPE_V2] — see the class KDoc). No default: the version is a statement about the content, and
+     * only the caller has seen it. The caller's [password] is wiped.
+     */
+    fun seal(password: CharArray, plaintext: ByteArray, envelopeVersion: Byte): Outcome<ByteArray> {
+        require(envelopeVersion in ENVELOPE_V1..MAX_ENVELOPE_VERSION) { "unknown envelope version $envelopeVersion" }
         val salt = ByteArray(SALT_BYTES).also(secureRandom::nextBytes)
-        val header = buildHeader(kdfId = KDF_PBKDF2_HMAC_SHA256, iterations = ITERATIONS, salt = salt)
+        val header = buildHeader(envelopeVersion, kdfId = KDF_PBKDF2_HMAC_SHA256, iterations = ITERATIONS, salt = salt)
         val key = deriveKey(password, salt, ITERATIONS)
             ?: return Outcome.Failure(AppError.Crypto("key derivation failed"))
         return try {
@@ -125,10 +139,10 @@ class BackupEnvelope @Inject constructor(
         }
     }
 
-    private fun buildHeader(kdfId: Byte, iterations: Int, salt: ByteArray): ByteArray =
+    private fun buildHeader(envelopeVersion: Byte, kdfId: Byte, iterations: Int, salt: ByteArray): ByteArray =
         ByteBuffer.allocate(MAGIC.size + 3 + Int.SIZE_BYTES + salt.size).apply {
             put(MAGIC)
-            put(ENVELOPE_VERSION)
+            put(envelopeVersion)
             put(kdfId)
             putInt(iterations)
             put(salt.size.toByte())
@@ -173,10 +187,11 @@ class BackupEnvelope @Inject constructor(
         // *wrong*: a flipped bit at offset 5 or 6 of an otherwise damaged file reads exactly like a
         // future version. They would then wait for an update that is never coming, instead of trying
         // another copy. Only a value ABOVE what we know can honestly be called newer; anything else
-        // is damage, and `Malformed` says so.
+        // is damage, and `Malformed` says so. For the envelope version "what we know" is now a range,
+        // 1 and 2, so the damage test is the floor: below 1 (a negative byte included) is Malformed.
         val envelopeVersion = buf.get()
-        if (envelopeVersion > ENVELOPE_VERSION) return Recognition.UnsupportedVersion
-        if (envelopeVersion != ENVELOPE_VERSION) return Recognition.Malformed
+        if (envelopeVersion > MAX_ENVELOPE_VERSION) return Recognition.UnsupportedVersion
+        if (envelopeVersion < ENVELOPE_V1) return Recognition.Malformed
         val kdfId = buf.get()
         if (kdfId > KDF_PBKDF2_HMAC_SHA256) return Recognition.UnsupportedVersion
         if (kdfId != KDF_PBKDF2_HMAC_SHA256) return Recognition.Malformed
@@ -202,7 +217,14 @@ class BackupEnvelope @Inject constructor(
     companion object {
         /** `ATBAK` — lets a wrong file be rejected before the user is asked for a password. */
         private val MAGIC = byteArrayOf(0x41, 0x54, 0x42, 0x41, 0x4B)
-        private const val ENVELOPE_VERSION: Byte = 0x01
+
+        /** A file every build restores faithfully — see the class KDoc. */
+        const val ENVELOPE_V1: Byte = 0x01
+
+        /** A file a build up to 1.3.4 would restore wrong (a monthly series by position) — see the class KDoc. */
+        const val ENVELOPE_V2: Byte = 0x02
+
+        private const val MAX_ENVELOPE_VERSION = ENVELOPE_V2
         private const val KDF_PBKDF2_HMAC_SHA256: Byte = 0x01
         private const val PBKDF2_ALGORITHM = "PBKDF2WithHmacSHA256"
 

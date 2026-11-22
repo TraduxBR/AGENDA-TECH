@@ -50,9 +50,10 @@ class ImportDeviceEventsUseCase @Inject constructor(
          */
         val truncated: Boolean = false,
         /**
-         * Of [events], how many repeat by a rule this app cannot reproduce and were imported as their
-         * first date only (see `RRuleReading.FirstDateOnly`). Said apart from the outcome above, which it
-         * qualifies rather than replaces: such an import neither failed nor stopped short.
+         * How many rows read repeat by a rule this app cannot reproduce (see `RRuleReading.FirstDateOnly`):
+         * imported as their first date only, or — for one that would have updated a series already here —
+         * not written at all, the series left as it was ([keepsStoredSeries]). Said apart from the outcome
+         * above, which it qualifies rather than replaces: such an import neither failed nor stopped short.
          */
         val firstDateOnly: Int = 0,
     )
@@ -187,7 +188,14 @@ class ImportDeviceEventsUseCase @Inject constructor(
                     // would be re-inserted as a duplicate (audit U1).
                     val existingId = withEx.sourceUid?.let { existing[it] }
                         ?: existing[DeviceEventMapper.rowIdUid(de.deviceId)]
-                    if (existingId != null) withEx.copy(id = existingId) else withEx
+                    // The stored row is read only for a rule taken as its first date — rare — and the
+                    // answer is the .ics import's own (keepsStoredSeries): a series stays as it was.
+                    val stored = if (existingId != null && taken.firstDateOnly) eventRepository.getById(existingId) else null
+                    when {
+                        stored != null && keepsStoredSeries(stored, taken.firstDateOnly) -> null
+                        existingId != null -> withEx.copy(id = existingId)
+                        else -> withEx
+                    }
                 }
                 eventRepository.upsertAll(mapped) // atomic batch — all rows or none
                 CalendarOutcome(

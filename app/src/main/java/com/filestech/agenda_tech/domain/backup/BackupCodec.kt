@@ -42,6 +42,15 @@ object BackupCodec {
         return payload
     }
 
+    /**
+     * True when [payload] holds a monthly series by position ("the second Tuesday", "the last day"): a
+     * build up to 1.3.4 skips the keys that carry it and would restore the series on its day number —
+     * wrong dates, not a refusal. Such a file is sealed in envelope version 2, which those builds refuse
+     * with "update the app" (see `BackupEnvelope`). The stored ordinal is null for the day number and only
+     * for it, so it alone tells.
+     */
+    fun holdsMonthlyPositions(payload: BackupPayload): Boolean = payload.events.any { it.rruleMonthlyOrdinal != null }
+
     fun toPayload(
         calendars: List<Calendar>,
         events: List<Event>,

@@ -29,20 +29,22 @@ class RRuleReaderTest {
     /** What an import made of a rule: the series, or the first date only. */
     private data class Taken(val rule: RecurrenceRule?, val firstDateOnly: Boolean)
 
-    private fun viaFile(rrule: String?, start: LocalDateTime): Taken {
+    /** [exDates]: UTC stamps (`…Z`), one EXDATE line in a file, the EXDATE column on a device row. */
+    private fun viaFile(rrule: String?, start: LocalDateTime, exDates: String? = null): Taken {
         val text = buildString {
             append("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:x@example.com\r\n")
             append("DTSTART;TZID=Europe/Paris:${start.format(STAMP)}\r\n")
             append("DTEND;TZID=Europe/Paris:${start.plusHours(1).format(STAMP)}\r\n")
             append("SUMMARY:Club\r\n")
             rrule?.let { append("RRULE:$it\r\n") }
+            exDates?.let { append("EXDATE:$it\r\n") }
             append("END:VEVENT\r\nEND:VCALENDAR\r\n")
         }
         val event = IcsCodec.decode(text, paris).single()
         return Taken(event.recurrence, event.firstDateOnly)
     }
 
-    private fun viaDevice(rrule: String?, start: LocalDateTime): Taken {
+    private fun viaDevice(rrule: String?, start: LocalDateTime, exDates: String? = null): Taken {
         val row = DeviceEvent(
             uid = "x",
             title = "Club",
@@ -55,7 +57,7 @@ class RRuleReaderTest {
             eventTimeZone = paris.id,
             allDay = false,
             rrule = rrule,
-            exDate = null,
+            exDate = exDates,
             deviceId = 1,
             originalId = null,
             originalInstanceTime = null,
@@ -65,9 +67,9 @@ class RRuleReaderTest {
     }
 
     /** Both imports, asserted to agree. */
-    private fun taken(rrule: String?, start: LocalDateTime = secondTuesday): Taken {
-        val file = viaFile(rrule, start)
-        assertThat(viaDevice(rrule, start)).isEqualTo(file)
+    private fun taken(rrule: String?, start: LocalDateTime = secondTuesday, exDates: String? = null): Taken {
+        val file = viaFile(rrule, start, exDates)
+        assertThat(viaDevice(rrule, start, exDates)).isEqualTo(file)
         return file
     }
 
@@ -148,6 +150,56 @@ class RRuleReaderTest {
     }
 
     @Test
+    fun `a bound read exactly is kept, the largest interval and a good UNTIL beside a COUNT of 0 included`() {
+        val until = LocalDateTime.of(2027, 12, 31, 22, 59, 59).atZone(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+
+        assertThat(taken("FREQ=WEEKLY;INTERVAL=999")).isEqualTo(reproduced(RecurrenceRule(RecurrenceFreq.WEEKLY, interval = 999)))
+        // COUNT=0 is no bound, and must not take a perfectly good UNTIL down with it.
+        assertThat(taken("FREQ=WEEKLY;COUNT=0;UNTIL=20271231T225959Z"))
+            .isEqualTo(reproduced(RecurrenceRule(RecurrenceFreq.WEEKLY, untilUtcMillis = until)))
+        // A valid COUNT decides the end; the UNTIL beside it is not read, readable or not.
+        assertThat(taken("FREQ=WEEKLY;COUNT=3;UNTIL=nonsense")).isEqualTo(reproduced(RecurrenceRule(RecurrenceFreq.WEEKLY, count = 3)))
+    }
+
+    @Test
+    fun `a yearly rule with BYMONTHDAY is the start's day once a year only beside its own month`() {
+        // RFC 5545 §3.3.10 expands BYMONTHDAY within the year under YEARLY: "FREQ=YEARLY;BYMONTHDAY=15"
+        // from 15 January is the 15th of every month. With BYMONTH=1 it is 15 January, once a year — the
+        // form Outlook writes.
+        val january15 = LocalDateTime.of(2027, 1, 15, 9, 0)
+
+        assertThat(taken("FREQ=YEARLY;BYMONTHDAY=15", january15)).isEqualTo(Taken(rule = null, firstDateOnly = true))
+        assertThat(taken("FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=15", january15))
+            .isEqualTo(reproduced(RecurrenceRule(RecurrenceFreq.YEARLY)))
+        assertThat(taken("FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=15", january15)).isEqualTo(Taken(rule = null, firstDateOnly = true))
+    }
+
+    // --- Cancelled occurrences: one cell of text, which a crafted file must not make unreadable ----------
+
+    /** [count] distinct cancelled instants, as UTC stamps one minute apart. */
+    private fun exDateStamps(count: Int): String {
+        val first = LocalDateTime.of(2027, 1, 1, 0, 0)
+        return (0 until count).joinToString(",") { "${first.plusMinutes(it.toLong()).format(STAMP)}Z" }
+    }
+
+    @Test
+    fun `a rule with more cancelled occurrences than any real series is taken as its first date`() {
+        // 100 000 distinct EXDATEs fit in a 5 MiB file. Stored, they make one TEXT cell of 1.4 MB — and at
+        // 300 000, past 2 MB, every query reading the row fails: the app crashes at every launch. Cutting
+        // the list down would bring back the occurrences cut, so the rule is refused whole.
+        assertThat(taken("FREQ=DAILY", exDates = exDateStamps(100_000))).isEqualTo(Taken(rule = null, firstDateOnly = true))
+    }
+
+    @Test
+    fun `up to the cap, every cancelled occurrence is kept, duplicates counted once`() {
+        val atCap = exDateStamps(RecurrenceRule.MAX_EXDATES)
+        val withDuplicates = "$atCap,${exDateStamps(10)}" // ten more stamps, all already in the list
+
+        val kept = taken("FREQ=DAILY", exDates = withDuplicates).rule
+        assertThat(kept?.exDatesUtcMillis).hasSize(RecurrenceRule.MAX_EXDATES)
+    }
+
+    @Test
     fun `an event that does not repeat is neither a series nor counted`() {
         assertThat(taken(null)).isEqualTo(Taken(rule = null, firstDateOnly = false))
     }
@@ -187,6 +239,17 @@ class RRuleReaderTest {
             "FREQ=WEEKLY;BYDAY=",
             "FREQ=WEEKLY;WKST=XX",
             "BYDAY=TU", // no FREQ at all
+            "FREQ=YEARLY;BYMONTHDAY=10", // RFC 5545: the 10th of EVERY month, not once a year
+            // Bounds this reader cannot read exactly: a series on other dates, or one that never ends.
+            "FREQ=WEEKLY;INTERVAL=1000", // was clamped to 999
+            "FREQ=WEEKLY;INTERVAL=0", // was raised to 1
+            "FREQ=WEEKLY;INTERVAL=-2",
+            "FREQ=WEEKLY;INTERVAL=abc",
+            "FREQ=WEEKLY;COUNT=0", // RFC 5545: the start alone — was read as an endless series
+            "FREQ=WEEKLY;COUNT=-3",
+            "FREQ=WEEKLY;COUNT=abc",
+            "FREQ=WEEKLY;UNTIL=20271331T000000Z", // unreadable: was read as an endless series
+            "FREQ=WEEKLY;COUNT=0;UNTIL=nonsense",
         ],
     )
     fun `a rule this app cannot reproduce is taken as its first date, and counted`(rrule: String) {
