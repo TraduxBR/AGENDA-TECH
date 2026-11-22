@@ -14,6 +14,8 @@ versions selon [SemVer](https://semver.org/lang/fr/).
   Ten minutes stays the default, the delay every earlier version had. The delay is written on the
   notification's button when it appears, so the button says what it will do even if the setting
   changes meanwhile; a notification shown by the previous version keeps its ten minutes.
+- **Themed icon** (Android 13 and later): with themed icons turned on, the launcher icon takes the
+  colours of the wallpaper like the system's own apps — the four squares, the lettering cut out.
 
 ### Fixed
 
