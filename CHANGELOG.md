@@ -11,6 +11,15 @@ versions selon [SemVer](https://semver.org/lang/fr/).
   Android 13 and later it can also be chosen for Agenda Tech alone (Settings → Apps → Agenda Tech →
   Language).
 
+### Fixed
+
+- **The default duration was lost as soon as the start was chosen** (reported on 1.3.4): with 15
+  minutes set, a new event ended one hour after its start. The form opens at 09:00, and a later start
+  left the end before it, which was then replaced by a fixed hour; an earlier start stretched the event
+  instead. Moving the start now moves the end with it, keeping the duration shown — the default one for
+  a new event, the event's own when editing or after "Duplicate". It is counted on the clock, so an
+  event moved across the change to summer or winter time still ends at the same hour.
+
 ### Changed
 
 - The translation check knows the plural categories of Portuguese, now fails on a language whose
