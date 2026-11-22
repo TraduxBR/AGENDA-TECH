@@ -1,0 +1,14 @@
+v1.4.0 — Monatlich nach Position
+
+• Monatlich am 2. Dienstag, am letzten
+  Freitag oder am letzten Tag des Monats.
+• Importierte Serien liegen auf ihren
+  echten Daten; eine Regel, der die App
+  nicht folgen kann, behält ihren ersten
+  Termin, und der Import sagt es.
+• Die Standarddauer gilt jetzt, wenn Sie
+  den Beginn wählen.
+• Schlummerdauer frei wählbar.
+• Designsymbol (Android 13+).
+• Brasilianisches Portugiesisch, danke an
+  TraduxBR.

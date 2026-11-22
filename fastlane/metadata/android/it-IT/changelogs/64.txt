@@ -1,0 +1,14 @@
+v1.4.0 — Ripetizione mensile per posizione
+
+• Ogni mese il 2° martedì, l'ultimo
+  venerdì o l'ultimo giorno del mese.
+• Le serie importate cadono nelle date
+  giuste; una regola che l'app non sa
+  seguire mantiene la prima data, e
+  l'importazione lo dice.
+• La durata predefinita è rispettata
+  quando sceglie l'inizio.
+• Durata del posticipo a scelta.
+• Icona a tema (Android 13+).
+• Portoghese brasiliano, grazie a
+  TraduxBR.

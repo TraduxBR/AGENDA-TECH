@@ -1,0 +1,14 @@
+v1.4.0 — Monthly repeats by position
+
+• Monthly on the 2nd Tuesday, the last
+  Friday or the last day of the month.
+• Imported series land on their real
+  dates; a rule the app cannot follow
+  keeps its first date, and the import
+  says so.
+• The default duration now applies when
+  you pick the start.
+• Snooze delay of your choice.
+• Themed icon (Android 13+).
+• Brazilian Portuguese, thanks to
+  TraduxBR.

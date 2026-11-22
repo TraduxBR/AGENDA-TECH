@@ -5,8 +5,22 @@ versions selon [SemVer](https://semver.org/lang/fr/).
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-11-22
+
+Monthly repeats by position, and imported series on their real dates.
+
 ### Added
 
+- **Monthly repeats by position**: "On the second Tuesday", "On the last Friday", "On the last day of the
+  month", besides "On day 10". Offered in the editor once "Monthly" is chosen, from the start date (the
+  last weekday when the start is in the month's last seven days, the last day when it is the last day);
+  moving the start keeps the choice and works the weekday out again. A fifth Tuesday skips the months that
+  have only four, as RFC 5545 says. Kept in the database (migration 7 → 8, which only adds two columns:
+  every existing monthly series stays on its day number), in the encrypted backup, and in `.ics` exports
+  (`BYDAY=2TU`, `BYDAY=-1FR`, `BYMONTHDAY=-1`). A backup that holds such a series is refused by Agenda
+  Tech 1.3.4 and earlier with "written by a newer version — update the app, do not delete the file",
+  instead of being restored with those series on the wrong days; every other backup still restores in
+  older versions.
 - **Brazilian Portuguese**, contributed by TraduxBR (#55): every screen, notification and widget. On
   Android 13 and later it can also be chosen for Agenda Tech alone (Settings → Apps → Agenda Tech →
   Language).
@@ -19,6 +33,25 @@ versions selon [SemVer](https://semver.org/lang/fr/).
 
 ### Fixed
 
+- **Imported repeating events landed on wrong dates, without a word.** "Every second Tuesday"
+  (`FREQ=MONTHLY;BYDAY=2TU`), imported from a `.ics` file or from the phone's calendar, repeated on its
+  start's day number — from Tuesday 10 November, on Thursday 10 December instead of Tuesday 8 December — and
+  "every weekday" written as `FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR` came in weekends included. The two imports
+  read repeat rules with two different parsers, which had already drifted apart; they now share one, which
+  also understands Outlook's `BYSETPOS` form and the yearly rules Outlook writes. A rule the app cannot
+  reproduce (by week number, hourly, every Tuesday of the month…) is imported as its first date only, and
+  the import now says how many. A series an earlier version imported on the wrong dates is corrected by
+  importing the same file again, when its rule is one the app now reproduces.
+- **Imported rules were bent to fit.** An `INTERVAL` above 999 was cut to 999 (and 0 raised to 1), a
+  `COUNT=0` or an unreadable `UNTIL` made the series endless, and `FREQ=YEARLY;BYMONTHDAY=15` — the 15th
+  of every month — was read as once a year. They now arrive as their first date only, and the import says
+  how many. So does a rule with more than 5 000 cancelled occurrences: a crafted file could otherwise make
+  the agenda crash at every launch. A backup is held to the same kind of ceiling (40 000 per series, far
+  above any real one) and refused whole beyond it.
+- **Re-importing an event the agenda already holds as a series** no longer turns that series into a single
+  event when the file's rule is one the app cannot reproduce — which lost its cancelled occurrences and
+  stranded the occurrences moved in the app. The series is left as it was, and counted in the import's
+  message.
 - **The default duration was lost as soon as the start was chosen** (reported on 1.3.4): with 15
   minutes set, a new event ended one hour after its start. The form opens at 09:00, and a later start
   left the end before it, which was then replaced by a fixed hour; an earlier start stretched the event

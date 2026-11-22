@@ -22,7 +22,7 @@ editing an XML file.
 | `app/src/main/res/values-<lang>/strings.xml` | your language |
 | `fastlane/metadata/android/<locale>/` | the F-Droid store listing |
 
-There are **398 keys**: 387 `<string>` and 11 `<plurals>` (the check prints the current count). The
+There are **445 keys**: 429 `<string>` and 16 `<plurals>` (the check prints the current count). The
 app has no hardcoded text:
 everything you see on screen, in a notification or on the home-screen widget comes from these
 files.
@@ -144,5 +144,5 @@ in a throwaway tree: a check that could only ever say "green" would be worse tha
 
 ## Thank you
 
-Translating nearly 400 strings is real work, and it is the difference between an app someone can use and
+Translating some 450 strings is real work, and it is the difference between an app someone can use and
 one they close. It is appreciated.
