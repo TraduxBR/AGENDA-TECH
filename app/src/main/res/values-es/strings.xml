@@ -321,8 +321,8 @@
     <string name="about_feat_encryption_desc">Toda la base de datos está cifrada con AES-256; la clave nunca sale del hardware seguro del dispositivo.</string>
     <string name="about_feat_theme_label">Temas claro y oscuro</string>
     <string name="about_feat_theme_desc">Sigue al sistema, o fije uno. Números de semana, primer día de la semana, color predeterminado.</string>
-    <string name="about_feat_languages_label">Cinco idiomas</string>
-    <string name="about_feat_languages_desc">Inglés, francés, alemán, italiano y español — a elegir para la app desde Android 13.</string>
+    <string name="about_feat_languages_label">Seis idiomas</string>
+    <string name="about_feat_languages_desc">Inglés, francés, alemán, italiano, español y portugués de Brasil — a elegir para la app desde Android 13.</string>
 
     <!-- About · Security -->
     <string name="about_security_title">Seguridad</string>
@@ -346,6 +346,7 @@
     <string name="about_report_issue">Informar de un problema</string>
     <string name="about_license_name">Apache License 2.0</string>
     <string name="about_privacy_policy">Política de privacidad</string>
+    <string name="about_thanks_body">Gracias a todas las personas que informan de un problema, prueban una nueva versión, proponen una idea o traducen la app: con su ayuda, Agenda Tech mejora.</string>
     <string name="about_credits_body">Hecha con cuidado por %1$s. Software libre y de código abierto: el código es público y auditable.</string>
     <string name="about_legal_body">© %1$s %2$s — Apache License 2.0</string>
 

@@ -5,6 +5,12 @@ versions selon [SemVer](https://semver.org/lang/fr/).
 
 ## [Unreleased]
 
+### Added
+
+- **Brazilian Portuguese**, contributed by TraduxBR (#55): every screen, notification and widget. On
+  Android 13 and later it can also be chosen for Agenda Tech alone (Settings → Apps → Agenda Tech →
+  Language).
+
 ### Fixed
 
 - **The default duration was lost as soon as the start was chosen** (reported on 1.3.4): with 15
@@ -13,6 +19,26 @@ versions selon [SemVer](https://semver.org/lang/fr/).
   instead. Moving the start now moves the end with it, keeping the duration shown — the default one for
   a new event, the event's own when editing or after "Duplicate". It is counted on the clock, so an
   event moved across the change to summer or winter time still ends at the same hour.
+
+### Changed
+
+- The translation check knows the plural categories of Portuguese, now fails on a language whose
+  categories it does not know (it skipped its plurals without a word), and reads `locales_config.xml`
+  in BCP 47 (`pt-BR`), the form Android parses — it expected `pt-rBR`, which Android reads as plain
+  Portuguese.
+
+## [1.3.4] — 2026-10-31
+
+Selected text stays in the app.
+
+### Fixed
+
+- **The selection toolbar handed the selected text to other apps.** Selecting text in an event — a
+  title, a place, a note — offered **Translate** (Android's text classifier) and the text actions of
+  other installed apps; each received the selected text. They are gone on every Android version:
+  before Android 11 every installed app could add its action. The toolbar keeps Cut, Copy, Paste and
+  Select all. One loss to state: Android's **Read aloud** no longer appears there; it stays reachable
+  through its accessibility shortcut.
 
 ### Changed
 

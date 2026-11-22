@@ -266,8 +266,8 @@ le plafond de longueur s'y appliquent désormais comme aux deux autres.
   ✅ Cette troncature **est signalée à l'utilisateur** (audit SEC-6, livré). Le fait est *retourné*
   par `DeviceCalendarRepositoryImpl.readEvents()` (`DeviceRead(rows, truncated)`) et non journalisé —
   le journal serait inerte sur une version publiée (`NoOpReleaseTree`). `ImportDeviceEventsUseCase`
-  le propage jusqu'à `DeviceImportScreen`, qui affiche `device_import_truncated` (présente dans les
-  cinq langues), distincte du message de succès et de celui d'échec partiel : une troncature n'est ni l'un
+  le propage jusqu'à `DeviceImportScreen`, qui affiche `device_import_truncated` (présente dans
+  chaque langue), distincte du message de succès et de celui d'échec partiel : une troncature n'est ni l'un
   ni l'autre, et les confondre, c'est la taire.
 
   Le plafond s'applique par **import**, pas par calendrier (audit DR-9) : `ImportDeviceEventsUseCase`

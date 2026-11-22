@@ -1,6 +1,7 @@
 # Translating Agenda Tech
 
-Agenda Tech ships in **English** (the source), **French**, **German**, **Italian** and **Spanish**.
+Agenda Tech ships in **English** (the source), **French**, **German**, **Italian**, **Spanish** and
+**Brazilian Portuguese**.
 This page is for anyone adding or correcting a language — no Android knowledge required beyond
 editing an XML file.
 
@@ -9,6 +10,8 @@ editing an XML file.
 > because a rough translation in your language beats no translation at all — not because they are
 > professional work. If something reads wrong, **please open an issue or a pull request**. You do
 > not need to justify a correction: a native ear is the authority here, not the person who wrote it.
+>
+> The Brazilian Portuguese translation was contributed by **TraduxBR** (pull request #55).
 
 ## Where the strings live
 
@@ -19,7 +22,8 @@ editing an XML file.
 | `app/src/main/res/values-<lang>/strings.xml` | your language |
 | `fastlane/metadata/android/<locale>/` | the F-Droid store listing |
 
-There are **310 keys**: 307 `<string>` and 3 `<plurals>`. The app has no hardcoded text:
+There are **398 keys**: 387 `<string>` and 11 `<plurals>` (the check prints the current count). The
+app has no hardcoded text:
 everything you see on screen, in a notification or on the home-screen widget comes from these
 files.
 
@@ -33,7 +37,9 @@ described below fails the build when one is missing.
    Without this line the Android Gradle Plugin **strips your resources out of the APK**, with no
    error, and the app silently stays in English.
 3. **Add the locale** to `app/src/main/res/xml/locales_config.xml`. This is what puts your
-   language in *Settings → Apps → Agenda Tech → Language* on Android 13 and later.
+   language in *Settings → Apps → Agenda Tech → Language* on Android 13 and later. A language with
+   a region is written there as a BCP 47 tag (`pt-BR`), while its folder and `localeFilters` say
+   `pt-rBR`.
 4. **Keep `android:localeConfig="@xml/locales_config"`** on `<application>` in
    `AndroidManifest.xml`. It is already there; it is listed because without it step 3 does
    nothing, and nothing else would say so.
@@ -59,8 +65,9 @@ build error. Same for a leading or trailing space and for `"`, `\` and `@`. This
 `strings.xml` only: the store listing files are plain text, where `\'` would show the backslash.
 
 **Plurals are not a free choice.** Each language has a fixed set of CLDR quantity categories.
-English and German use `one` / `other`; French, Italian and Spanish also use `many` (exact
-millions: *1 000 000 d'événements*). The CI check names any category that is missing or useless.
+English and German use `one` / `other`; French, Italian, Spanish and Brazilian Portuguese also use
+`many` (exact millions: *1 000 000 d'événements*). The CI check names any category that is missing
+or useless, and fails on a language whose categories it does not know yet.
 
 **Do not translate these**, they are names or protocol words: `Agenda Tech`, `PIN`, `GPS`, `.ics`,
 `.atbak`, `SQLCipher`, `AES-256`, `Android Keystore`, `Apache License 2.0`, `INTERNET` (the name of
@@ -71,20 +78,20 @@ the permission).
 Pick **one** word per concept in your language and use it everywhere: a synonym used halfway
 through makes users think there are two features.
 
-| English | French | German | Italian | Spanish |
-|---|---|---|---|---|
-| event | événement | Termin | evento | evento |
-| calendar (one of several) | calendrier | Kalender | calendario | calendario |
-| agenda (all of your data) | agenda | Agenda | agenda | agenda |
-| reminder | rappel | Erinnerung | promemoria | recordatorio |
-| recurring (event) | récurrent | Serientermin / wiederkehrend | ricorrente | periódico |
-| occurrence | occurrence | Termin | occorrenza | repetición |
-| backup | sauvegarde | Sicherung | backup | copia de seguridad |
-| app lock | verrouillage | App-Sperre | blocco dell'app | bloqueo de la app |
-| biometrics | biométrie | Biometrie | biometria | biometría |
+| English | French | German | Italian | Spanish | Brazilian Portuguese |
+|---|---|---|---|---|---|
+| event | événement | Termin | evento | evento | evento |
+| calendar (one of several) | calendrier | Kalender | calendario | calendario | calendário |
+| agenda (all of your data) | agenda | Agenda | agenda | agenda | agenda |
+| reminder | rappel | Erinnerung | promemoria | recordatorio | lembrete |
+| recurring (event) | récurrent | Serientermin / wiederkehrend | ricorrente | periódico | recorrente |
+| occurrence | occurrence | Termin | occorrenza | repetición | ocorrência |
+| backup | sauvegarde | Sicherung | backup | copia de seguridad | backup |
+| app lock | verrouillage | App-Sperre | blocco dell'app | bloqueo de la app | bloqueio do aplicativo |
+| biometrics | biométrie | Biometrie | biometria | biometría | biometria |
 
 **Register: formal.** French uses *vous*, German *Sie*, Italian *Lei*, Spanish *usted*, as in the
-other Files Tech apps.
+other Files Tech apps. Brazilian Portuguese uses *você*, the usual register of Brazilian software.
 
 **Strings that do not forgive an approximation.** Translate these slowly, and prefer a plain,
 unambiguous wording over an elegant one: the **backup** and **restore** screens (a restore deletes
@@ -137,5 +144,5 @@ in a throwaway tree: a check that could only ever say "green" would be worse tha
 
 ## Thank you
 
-Translating 310 strings is real work, and it is the difference between an app someone can use and
+Translating nearly 400 strings is real work, and it is the difference between an app someone can use and
 one they close. It is appreciated.

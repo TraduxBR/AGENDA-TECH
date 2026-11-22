@@ -18,7 +18,9 @@ What it checks, and why each one is needed
 2. FORMAT ARGS - %1$s, %2$d... lost or invented CRASH the app at runtime (IllegalFormatException).
                  The ORDER may change - that is what 1$ / 2$ are for - the set may not.
 3. PLURALS     - every quantity the LANGUAGE requires (CLDR), not an English floor: English only
-                 has `one`/`other`, and French, Italian and Spanish also need `many`.
+                 has `one`/`other`, and French, Italian, Spanish and Portuguese also need `many`.
+                 A language missing from CLDR_QUANTITIES fails too: skipping it would leave its
+                 plurals unchecked without a word.
 4. STORE LISTING - fastlane caps, counted in CHARACTERS as fdroidserver cuts them, every file
                  present, and the changelog of the current versionCode: present, and within the
                  500 characters past which F-Droid cuts its "What's new" without a word.
@@ -26,7 +28,10 @@ What it checks, and why each one is needed
                  a. values-XX/strings.xml       the translation
                  b. localeFilters               otherwise AGP STRIPS the resources from the APK,
                                                 with no error: the app stays in English
-                 c. res/xml/locales_config.xml  otherwise no per-app language picker (Android 13+)
+                 c. res/xml/locales_config.xml  otherwise no per-app language picker (Android 13+);
+                                                written as a BCP 47 tag (pt-BR), not as the
+                                                folder's qualifier (pt-rBR), which Android reads
+                                                as plain Portuguese
                  d. android:localeConfig        the manifest must point at (c), or (c) is dead
                  And the CONVERSE: a language announced in (b) or (c) with no translation behind
                  it offers the user a language the app does not speak.
@@ -64,6 +69,7 @@ CLDR_QUANTITIES = {
     "fr": {"one", "many", "other"},
     "it": {"one", "many", "other"},
     "es": {"one", "many", "other"},
+    "pt-rBR": {"one", "many", "other"},
 }
 
 FASTLANE_CAPS = {
@@ -112,8 +118,19 @@ def pretty(args):
 
 
 def tag(directory):
-    """values-pt-rBR -> pt-rBR, the form localeFilters and locales_config expect."""
+    """values-pt-rBR -> pt-rBR, the form localeFilters expects."""
     return directory[len("values-"):]
+
+
+def bcp47(lang):
+    """pt-rBR -> pt-BR, b+sr+Latn -> sr-Latn: the form locales_config expects.
+
+    Android parses each entry with Locale.forLanguageTag, which stops at "rBR" (not a region, not a
+    variant) and keeps plain "pt": a picker offering Portuguese, not Brazilian Portuguese.
+    """
+    if lang.startswith("b+"):
+        return "-".join(lang[2:].split("+"))
+    return lang.replace("-r", "-", 1)
 
 
 def gradle_languages():
@@ -293,7 +310,10 @@ def check_language(directory, ref_strings, ref_plurals, gradle, config):
             for q in sorted(set(items) - set(plurals[k])):
                 fail(lang, "MISSING quantity in plural %s: %s" % (k, q))
     required = CLDR_QUANTITIES.get(lang)
-    if required is not None:
+    if required is None:
+        fail(lang, "no CLDR plural categories known for this language: add them to "
+                   "CLDR_QUANTITIES, or its plurals go unchecked")
+    else:
         for k in sorted(plurals):
             missing = required - set(plurals[k])
             if missing:
@@ -308,9 +328,9 @@ def check_language(directory, ref_strings, ref_plurals, gradle, config):
     if lang not in gradle:
         fail(lang, "absent from localeFilters (app/build.gradle.kts): AGP would STRIP these "
                    "resources from the APK and the app would stay in English")
-    if lang not in config:
-        fail(lang, "absent from res/xml/locales_config.xml: no per-app language picker on "
-                   "Android 13+")
+    if bcp47(lang) not in config:
+        fail(lang, "absent from res/xml/locales_config.xml as %s: no per-app language picker "
+                   "on Android 13+" % bcp47(lang))
 
     # 6. LINKS
     check_repository_links(directory, strings)
@@ -346,9 +366,9 @@ def main():
     for lang in sorted(gradle - translated):
         fail(lang, "announced in localeFilters but no values-%s/strings.xml: the app would "
                    "offer an empty language" % lang)
-    for lang in sorted(config - translated):
-        fail(lang, "announced in locales_config.xml but no values-%s/strings.xml: the picker "
-                   "would offer an empty language" % lang)
+    for lang in sorted(config - {bcp47(t) for t in translated}):
+        fail(lang, "announced in locales_config.xml but no matching values-XX/strings.xml: the "
+                   "picker would offer an empty language")
 
     check_line_endings(directories)
     check_fastlane()
