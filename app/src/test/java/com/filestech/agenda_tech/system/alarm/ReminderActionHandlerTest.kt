@@ -53,11 +53,29 @@ class ReminderActionHandlerTest {
         handle(ReminderReceiver.ACTION_SNOOZE)
 
         coVerify { notifier.cancelReminder(10L, occurrence) }
-        coVerify { scheduler.snooze(10L, occurrence) }
+        // No delay carried (a notification posted before it was a setting): the default, ten minutes.
+        coVerify { scheduler.snooze(10L, occurrence, 10) }
         // Snoozing is not "the reminder fired": the series already moved on when it first did.
         coVerify(exactly = 0) { scheduler.onReminderFired(any(), any(), any()) }
         // …and no new notification is posted now — the snoozed alarm will do that in ten minutes.
         coVerify(exactly = 0) { notifier.postReminder(any(), any()) }
+    }
+
+    @Test
+    fun `snooze re-arms after the delay its button showed`() = runTest {
+        handler.handle(ReminderReceiver.ACTION_SNOOZE, 5L, 10L, occurrence, snoozeMinutes = 30)
+
+        coVerify { scheduler.snooze(10L, occurrence, 30) }
+    }
+
+    @Test
+    fun `a delay that is not one of the settings' choices falls back to the default`() = runTest {
+        // Not a delay to trust blindly: 0 would ring again at once, a huge one would bury the reminder.
+        listOf(-1, 0, 7, 100_000).forEach { carried ->
+            handler.handle(ReminderReceiver.ACTION_SNOOZE, 5L, 10L, occurrence, snoozeMinutes = carried)
+        }
+
+        coVerify(exactly = 4) { scheduler.snooze(10L, occurrence, 10) }
     }
 
     @Test
@@ -76,7 +94,7 @@ class ReminderActionHandlerTest {
 
         coVerify(exactly = 0) { notifier.postReminder(any(), any()) }
         coVerify(exactly = 0) { notifier.cancelReminder(any(), any()) }
-        coVerify(exactly = 0) { scheduler.snooze(any(), any()) }
+        coVerify(exactly = 0) { scheduler.snooze(any(), any(), any()) }
         coVerify(exactly = 0) { scheduler.onReminderFired(any(), any(), any()) }
     }
 
@@ -86,7 +104,7 @@ class ReminderActionHandlerTest {
         handle(null)
 
         coVerify(exactly = 0) { notifier.postReminder(any(), any()) }
-        coVerify(exactly = 0) { scheduler.snooze(any(), any()) }
+        coVerify(exactly = 0) { scheduler.snooze(any(), any(), any()) }
     }
 
     @Test

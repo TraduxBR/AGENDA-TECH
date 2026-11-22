@@ -191,6 +191,11 @@ class SettingsViewModel @Inject constructor(
     fun setNotifVibrate(value: Boolean) = updateThenRebuildChannel { it.copy(notifVibrate = value) }
     fun setNotifLockScreen(value: Boolean) = updateThenRebuildChannel { it.copy(notifLockScreen = value) }
 
+    /** No channel to rebuild: the delay is not part of the channel, it rides on each notification's button. */
+    fun setSnoozeMinutes(minutes: Int) = update {
+        it.copy(snoozeMinutes = AppSettings.snoozeMinutesOrDefault(minutes))
+    }
+
     private fun update(transform: (AppSettings) -> AppSettings) {
         viewModelScope.launch { settingsRepository.update(transform) }
     }

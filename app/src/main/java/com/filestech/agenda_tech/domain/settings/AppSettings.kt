@@ -119,9 +119,26 @@ data class AppSettings(
     val notifSoundUri: String? = null,
     val notifVibrate: Boolean = true,
     val notifLockScreen: Boolean = true,
+    /**
+     * How long "Snooze" on a reminder postpones it, in minutes: one of [SNOOZE_OPTIONS]. Ten by default,
+     * the fixed delay of every version before it became a setting.
+     */
+    val snoozeMinutes: Int = DEFAULT_SNOOZE_MINUTES,
 ) {
     companion object {
         const val DEFAULT_DURATION_MINUTES = 60
         const val NO_DEFAULT_REMINDER = -1
+        const val DEFAULT_SNOOZE_MINUTES = 10
+
+        /** The snooze delays offered in the settings. Any other value is read as the default. */
+        val SNOOZE_OPTIONS: List<Int> = listOf(5, 10, 15, 30, 60)
+
+        /**
+         * [minutes] if it is one of [SNOOZE_OPTIONS], else the default. A value from elsewhere — a file
+         * written by a later version, a notification posted before the setting existed — must not arm an
+         * alarm at an arbitrary time, nor at once.
+         */
+        fun snoozeMinutesOrDefault(minutes: Int): Int =
+            if (minutes in SNOOZE_OPTIONS) minutes else DEFAULT_SNOOZE_MINUTES
     }
 }

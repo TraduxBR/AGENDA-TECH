@@ -265,7 +265,7 @@ class ReminderScheduler @Inject constructor(
     }
 
     /**
-     * Re-arm a reminder [SNOOZE_MINUTES] from now, for the same occurrence.
+     * Re-arm a reminder [minutes] from now, for the same occurrence — the delay the tapped button showed.
      *
      * Deliberately kept off the series' own alarm: it uses its own action and its own request-code
      * space. Re-using [ReminderReceiver.ACTION_FIRE] would make the snoozed alarm roll the series
@@ -273,7 +273,7 @@ class ReminderScheduler @Inject constructor(
      * [onReminderFired] has just armed for the next occurrence — the reminder after this one would
      * silently never fire.
      */
-    fun snooze(eventId: Long, occurrenceStartUtcMillis: Long) {
+    fun snooze(eventId: Long, occurrenceStartUtcMillis: Long, minutes: Int) {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             action = ReminderReceiver.ACTION_SNOOZE_FIRE
             putExtra(ReminderReceiver.EXTRA_EVENT_ID, eventId)
@@ -285,7 +285,7 @@ class ReminderScheduler @Inject constructor(
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val fireAt = System.currentTimeMillis() + SNOOZE_MINUTES * 60_000L
+        val fireAt = System.currentTimeMillis() + minutes * 60_000L
         if (canScheduleExact()) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fireAt, pendingIntent)
         } else {
@@ -396,9 +396,6 @@ class ReminderScheduler @Inject constructor(
     }
 
     companion object {
-        /** How long "snooze" defers a reminder. Ten minutes: long enough to finish what you were doing. */
-        const val SNOOZE_MINUTES = 10
-
         /**
          * What every reminder gets in round one of [rescheduleAll], before anything is offered twice.
          *

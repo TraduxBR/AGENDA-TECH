@@ -10,7 +10,7 @@ Esiste perché il suo calendario non debba vivere altrove che sul suo telefono. 
 <li>Condivisione — invii un evento come testo o come file .ics all'app di sua scelta</li>
 <li>Giorni festivi — quelli di nove paesi europei e degli Stati Uniti, calcolati sul telefono, disattivati per impostazione predefinita</li>
 <li>Eventi ricorrenti (RFC 5545) — ogni giorno, ogni settimana nei giorni scelti, ogni mese, ogni anno; fine dopo N occorrenze o a una data; modifica o eliminazione di una singola occorrenza</li>
-<li>Promemoria — sveglie esatte, riprogrammate dopo un riavvio, anticipo libero, il suo suono e un pulsante «Posticipa di 10 min» nella notifica</li>
+<li>Promemoria — sveglie esatte, riprogrammate dopo un riavvio, anticipo libero, il suo suono e un pulsante «Posticipa» nella notifica, da 5 minuti a 1 ora a scelta</li>
 <li>Backup cifrato — esporti l'intero calendario in un file .atbak protetto da password (PBKDF2 a 600.000 iterazioni + AES-256-GCM). Lo conservi ovunque, cloud compreso: senza la sua password resta illeggibile</li>
 <li>Ricerca — per titolo, descrizione, luogo, indirizzo o città; accenti e maiuscole non contano</li>
 <li>Importazione dal calendario del dispositivo — copia ciò che le app di calendario del telefono vi hanno già sincronizzato, in sola lettura, senza alcuna rete</li>

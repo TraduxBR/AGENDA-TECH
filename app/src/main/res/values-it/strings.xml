@@ -262,6 +262,7 @@
     <string name="settings_notif_sound_reset">Torna al suono di sistema</string>
     <string name="settings_notif_vibrate">Vibrazione</string>
     <string name="settings_notif_lockscreen">Mostra nella schermata di blocco</string>
+    <string name="settings_snooze">Posticipa di</string>
     <string name="settings_notif_system">Apri le impostazioni di sistema delle notifiche</string>
     <string name="settings_section_privacy">Privacy</string>
     <string name="settings_flag_secure">Blocca gli screenshot</string>

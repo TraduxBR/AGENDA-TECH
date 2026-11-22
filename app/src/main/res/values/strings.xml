@@ -254,6 +254,9 @@
     <string name="settings_notif_sound_reset">Back to the system sound</string>
     <string name="settings_notif_vibrate">Vibrate</string>
     <string name="settings_notif_lockscreen">Show on lock screen</string>
+    <!-- Title of the snooze delay setting; the chosen delay ("10 min") shows next to it, and on the
+         notification's button (reminder_snooze). -->
+    <string name="settings_snooze">Snooze for</string>
     <string name="settings_notif_system">Open system notification settings</string>
     <string name="settings_section_privacy">Privacy</string>
     <string name="settings_flag_secure">Block screenshots</string>

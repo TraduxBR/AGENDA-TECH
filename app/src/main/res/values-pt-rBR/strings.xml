@@ -264,6 +264,7 @@
     <string name="settings_notif_sound_reset">Restaurar som do sistema</string>
     <string name="settings_notif_vibrate">Vibrar</string>
     <string name="settings_notif_lockscreen">Mostrar na tela de bloqueio</string>
+    <string name="settings_snooze">Adiar por</string>
     <string name="settings_notif_system">Abrir configurações de notificações do sistema</string>
     <string name="settings_section_privacy">Privacidade</string>
     <string name="settings_flag_secure">Bloquear capturas de tela</string>

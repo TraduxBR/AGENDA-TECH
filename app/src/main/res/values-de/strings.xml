@@ -252,6 +252,7 @@
     <string name="settings_notif_sound_reset">Zurück zum Systemton</string>
     <string name="settings_notif_vibrate">Vibration</string>
     <string name="settings_notif_lockscreen">Auf dem Sperrbildschirm anzeigen</string>
+    <string name="settings_snooze">Schlummern für</string>
     <string name="settings_notif_system">Systemeinstellungen für Benachrichtigungen öffnen</string>
     <string name="settings_section_privacy">Datenschutz</string>
     <string name="settings_flag_secure">Bildschirmfotos blockieren</string>

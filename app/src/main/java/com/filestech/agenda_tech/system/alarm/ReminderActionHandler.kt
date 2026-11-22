@@ -1,6 +1,7 @@
 package com.filestech.agenda_tech.system.alarm
 
 import com.filestech.agenda_tech.domain.repository.EventRepository
+import com.filestech.agenda_tech.domain.settings.AppSettings
 import com.filestech.agenda_tech.system.notifications.ReminderNotifier
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,14 +21,24 @@ class ReminderActionHandler @Inject constructor(
     private val scheduler: ReminderScheduler,
 ) {
 
-    suspend fun handle(action: String?, reminderId: Long, eventId: Long, occurrenceStartUtcMillis: Long) {
+    /**
+     * [snoozeMinutes] is the delay the tapped button showed, or anything else when the intent carried
+     * none: it is then read as the default (see [AppSettings.snoozeMinutesOrDefault]).
+     */
+    suspend fun handle(
+        action: String?,
+        reminderId: Long,
+        eventId: Long,
+        occurrenceStartUtcMillis: Long,
+        snoozeMinutes: Int = AppSettings.DEFAULT_SNOOZE_MINUTES,
+    ) {
         if (!handles(action) || eventId < 0L) return
         when (action) {
             ReminderReceiver.ACTION_SNOOZE -> {
                 // Dismiss before re-arming: leaving the old notification up would show the same
                 // reminder twice within the snooze window.
                 notifier.cancelReminder(eventId, occurrenceStartUtcMillis)
-                scheduler.snooze(eventId, occurrenceStartUtcMillis)
+                scheduler.snooze(eventId, occurrenceStartUtcMillis, AppSettings.snoozeMinutesOrDefault(snoozeMinutes))
             }
             else -> {
                 eventRepository.getById(eventId)?.let { event ->
