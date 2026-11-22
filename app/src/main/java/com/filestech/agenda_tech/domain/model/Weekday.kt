@@ -4,7 +4,8 @@ import timber.log.Timber
 
 /**
  * Day of week, ISO-8601 numbered (Monday = 1 … Sunday = 7) so [isoValue] maps 1:1 to
- * `java.time.DayOfWeek.value`. Used by [RecurrenceRule.byWeekdays] for weekly `BYDAY` rules.
+ * `java.time.DayOfWeek.value`. Used by [RecurrenceRule.byWeekdays] for weekly `BYDAY` rules, and by
+ * [MonthlyRule.NthWeekday] for a monthly one ("the second Tuesday").
  */
 enum class Weekday(val isoValue: Int) {
     MONDAY(1),

@@ -64,6 +64,19 @@ data class BackupEvent(
     val rruleCount: Int? = null,
     val rruleUntilUtcMillis: Long? = null,
     val rruleExDatesUtcMillis: List<Long> = emptyList(),
+    /**
+     * Which day of the month a monthly series falls on, as the database keeps it —
+     * [com.filestech.agenda_tech.domain.model.MonthlyRule.storedOrdinal] and `storedWeekdayIso`; both null
+     * for the day number.
+     *
+     * Added without bumping [BackupPayload.FORMAT_VERSION], the way [kindRaw] was: a file written before
+     * them has neither key and restores every monthly series on its day number, which is what it was. The
+     * other direction is the cost, and it is the same as for birthdays: a build that predates them skips
+     * the keys (`ignoreUnknownKeys`) and restores "the second Tuesday" as the day number of its start.
+     * Refusing the file there instead would leave someone restoring an older build with no agenda at all.
+     */
+    val rruleMonthlyOrdinal: Int? = null,
+    val rruleMonthlyWeekdayIso: Int? = null,
     /** Per-occurrence override link (iCalendar RECURRENCE-ID model). */
     val recurrenceParentId: Long? = null,
     val originalStartUtcMillis: Long? = null,

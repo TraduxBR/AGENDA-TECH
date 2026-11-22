@@ -105,6 +105,7 @@ import com.filestech.agenda_tech.ui.util.HolidayLine
 import com.filestech.agenda_tech.ui.util.LocalDeviceZone
 import com.filestech.agenda_tech.ui.util.openMapLink
 import com.filestech.agenda_tech.ui.util.rememberAppLocale
+import com.filestech.agenda_tech.ui.util.withFirstDateOnly
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -160,8 +161,10 @@ fun MonthScreen(
             // <plurals> depuis l'audit : « 1 events » s'affichait dans le cas le plus courant.
             is IcsResult.Exported ->
                 resources.getQuantityString(R.plurals.ics_export_ok, result.count, result.count)
-            is IcsResult.Imported ->
-                resources.getQuantityString(R.plurals.ics_import_ok, result.count, result.count)
+            is IcsResult.Imported -> resources.withFirstDateOnly(
+                resources.getQuantityString(R.plurals.ics_import_ok, result.count, result.count),
+                result.firstDateOnly,
+            )
             IcsResult.TooManyEvents ->
                 resources.getString(R.string.ics_import_too_many, ImportLimits.MAX_EVENTS)
             IcsResult.Failed -> resources.getString(R.string.ics_error)

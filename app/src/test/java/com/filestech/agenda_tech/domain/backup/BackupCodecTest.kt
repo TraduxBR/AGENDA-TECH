@@ -5,6 +5,7 @@ import com.filestech.agenda_tech.domain.model.Calendar
 import com.filestech.agenda_tech.domain.model.CalendarColor
 import com.filestech.agenda_tech.domain.model.Event
 import com.filestech.agenda_tech.domain.model.EventKind
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceFreq
 import com.filestech.agenda_tech.domain.model.RecurrenceRule
 import com.filestech.agenda_tech.domain.model.Weekday
@@ -142,6 +143,61 @@ class BackupCodecTest {
     @Test
     fun `refuses malformed json`() {
         assertThrows<Exception> { BackupCodec.decodeFromJson("{ this is not json") }
+    }
+
+    // --- La position dans le mois ------------------------------------------------------------------
+
+    /** A monthly series on its last Friday: left at its day number, a dropped position would round-trip "fine". */
+    private val lastFridayEvent = fullEvent.copy(
+        id = 12,
+        kind = EventKind.NORMAL,
+        recurrence = RecurrenceRule(
+            freq = RecurrenceFreq.MONTHLY,
+            interval = 2,
+            count = 6,
+            exDatesUtcMillis = listOf(1_800_600_000_000),
+            monthly = MonthlyRule.NthWeekday(MonthlyRule.LAST, Weekday.FRIDAY),
+        ),
+    )
+
+    @Test
+    fun `round-trips each monthly position`() {
+        listOf(
+            MonthlyRule.NthWeekday(MonthlyRule.LAST, Weekday.FRIDAY),
+            MonthlyRule.NthWeekday(5, Weekday.SUNDAY),
+            MonthlyRule.LastDay,
+            MonthlyRule.SameDay,
+        ).forEach { position ->
+            val event = lastFridayEvent.copy(recurrence = lastFridayEvent.recurrence!!.copy(monthly = position))
+            val json = BackupCodec.encodeToJson(BackupCodec.toPayload(calendars, listOf(event), emptyMap(), 0))
+
+            assertThat(BackupCodec.decodeFromJson(json).events.single().toDomain()).isEqualTo(event)
+        }
+    }
+
+    @Test
+    fun `a backup written before monthly positions existed restores them on their day number`() {
+        // Added WITHOUT bumping FORMAT_VERSION, like `kindRaw`: a .atbak taken by 1.3.4 has neither key and
+        // must restore, each monthly series reading as what it then was — its day number.
+        val json = BackupCodec.encodeToJson(BackupCodec.toPayload(calendars, listOf(lastFridayEvent), emptyMap(), 0))
+            .replace(",\"rruleMonthlyOrdinal\":-1", "")
+            .replace(",\"rruleMonthlyWeekdayIso\":5", "")
+
+        assertThat(json).doesNotContain("rruleMonthly")
+        val restored = BackupCodec.decodeFromJson(json).events.single().toDomain()
+        assertThat(restored.recurrence?.monthly).isEqualTo(MonthlyRule.SameDay)
+        assertThat(restored.recurrence?.interval).isEqualTo(2) // the rest of the rule is untouched
+    }
+
+    @Test
+    fun `a hand-edited position restores as the day number instead of sinking the whole restore`() {
+        // The database's reader, so the same policy: a backup is opened on the day the agenda is gone.
+        val json = BackupCodec.encodeToJson(BackupCodec.toPayload(calendars, listOf(lastFridayEvent), emptyMap(), 0))
+        val poisoned = json.replace("\"rruleMonthlyOrdinal\":-1", "\"rruleMonthlyOrdinal\":42")
+        assertThat(poisoned).isNotEqualTo(json)
+
+        assertThat(BackupCodec.decodeFromJson(poisoned).events.single().toDomain().recurrence?.monthly)
+            .isEqualTo(MonthlyRule.SameDay)
     }
 
     @Test

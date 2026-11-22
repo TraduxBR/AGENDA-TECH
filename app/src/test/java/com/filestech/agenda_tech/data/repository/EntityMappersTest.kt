@@ -3,8 +3,10 @@ package com.filestech.agenda_tech.data.repository
 import com.filestech.agenda_tech.data.local.db.AgendaEnumConverters
 import com.filestech.agenda_tech.data.local.db.entity.EventEntity
 import com.filestech.agenda_tech.domain.model.EventKind
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceFreq
 import com.filestech.agenda_tech.domain.model.RecurrenceRule
+import com.filestech.agenda_tech.domain.model.Weekday
 import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.Test
 
@@ -62,6 +64,45 @@ class EntityMappersTest {
         createdAt = 0,
         updatedAt = 0,
     )
+
+    // --- v8 : la position dans le mois ------------------------------------------------------------
+
+    @Test
+    fun `a monthly position survives both directions of the mapper`() {
+        listOf(
+            MonthlyRule.NthWeekday(2, Weekday.TUESDAY),
+            MonthlyRule.NthWeekday(MonthlyRule.LAST, Weekday.FRIDAY),
+            MonthlyRule.LastDay,
+            MonthlyRule.SameDay,
+        ).forEach { position ->
+            val event = eventEntity(rruleInterval = 1).copy(rruleFreq = RecurrenceFreq.MONTHLY).toDomain()
+                .let { it.copy(recurrence = it.recurrence!!.copy(monthly = position)) }
+
+            assertThat(event.toEntity(createdAt = 0, updatedAt = 0).toDomain().recurrence?.monthly).isEqualTo(position)
+        }
+    }
+
+    @Test
+    fun `a monthly row written before v8 reads as its day number`() {
+        // What the 7 to 8 migration leaves in every existing row: both new columns NULL.
+        val old = eventEntity(rruleInterval = 1).copy(rruleFreq = RecurrenceFreq.MONTHLY)
+
+        assertThat(old.rruleMonthlyOrdinal).isNull()
+        assertThat(old.toDomain().recurrence?.monthly).isEqualTo(MonthlyRule.SameDay)
+    }
+
+    @Test
+    fun `a damaged position is healed on read, not thrown on`() {
+        // A weekly row carrying a monthly position would fail RecurrenceRule's invariant: the same crash
+        // on the render path of every view that the interval clamp above exists to prevent.
+        val weekly = eventEntity(rruleInterval = 1)
+            .copy(rruleFreq = RecurrenceFreq.WEEKLY, rruleMonthlyOrdinal = 2, rruleMonthlyWeekday = 2)
+        val nonsense = eventEntity(rruleInterval = 1)
+            .copy(rruleFreq = RecurrenceFreq.MONTHLY, rruleMonthlyOrdinal = 9, rruleMonthlyWeekday = 2)
+
+        assertThat(weekly.toDomain().recurrence?.monthly).isEqualTo(MonthlyRule.SameDay)
+        assertThat(nonsense.toDomain().recurrence?.monthly).isEqualTo(MonthlyRule.SameDay)
+    }
 
     @Test
     fun `the event kind survives both directions of the mapper`() {

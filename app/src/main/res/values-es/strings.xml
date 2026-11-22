@@ -34,6 +34,11 @@
         <item quantity="many">%1$d de eventos importados</item>
         <item quantity="other">%1$d eventos importados</item>
     </plurals>
+    <plurals name="import_first_date_only">
+        <item quantity="one">%1$d evento periódico sigue una regla que Agenda Tech no puede reproducir: solo se importó su primera fecha.</item>
+        <item quantity="many">%1$d de eventos periódicos siguen una regla que Agenda Tech no puede reproducir: solo se importó su primera fecha.</item>
+        <item quantity="other">%1$d eventos periódicos siguen una regla que Agenda Tech no puede reproducir: solo se importó su primera fecha.</item>
+    </plurals>
     <string name="ics_error">No se pudo leer el archivo de calendario</string>
     <string name="ics_import_too_many">Este archivo contiene más eventos de los que acepta la app (%1$d como máximo). Divídalo e importe las partes.</string>
 
@@ -155,6 +160,51 @@
         <item quantity="other">repeticiones</item>
     </plurals>
     <string name="recurrence_end_on">El</string>
+    <!-- Monthly series: one whole phrase per position and weekday (see the English file). -->
+    <string name="recurrence_monthly_on_day">El día %1$d del mes</string>
+    <string name="recurrence_monthly_last_day">El último día del mes</string>
+    <string name="recurrence_monthly_first_monday">El primer lunes</string>
+    <string name="recurrence_monthly_first_tuesday">El primer martes</string>
+    <string name="recurrence_monthly_first_wednesday">El primer miércoles</string>
+    <string name="recurrence_monthly_first_thursday">El primer jueves</string>
+    <string name="recurrence_monthly_first_friday">El primer viernes</string>
+    <string name="recurrence_monthly_first_saturday">El primer sábado</string>
+    <string name="recurrence_monthly_first_sunday">El primer domingo</string>
+    <string name="recurrence_monthly_second_monday">El segundo lunes</string>
+    <string name="recurrence_monthly_second_tuesday">El segundo martes</string>
+    <string name="recurrence_monthly_second_wednesday">El segundo miércoles</string>
+    <string name="recurrence_monthly_second_thursday">El segundo jueves</string>
+    <string name="recurrence_monthly_second_friday">El segundo viernes</string>
+    <string name="recurrence_monthly_second_saturday">El segundo sábado</string>
+    <string name="recurrence_monthly_second_sunday">El segundo domingo</string>
+    <string name="recurrence_monthly_third_monday">El tercer lunes</string>
+    <string name="recurrence_monthly_third_tuesday">El tercer martes</string>
+    <string name="recurrence_monthly_third_wednesday">El tercer miércoles</string>
+    <string name="recurrence_monthly_third_thursday">El tercer jueves</string>
+    <string name="recurrence_monthly_third_friday">El tercer viernes</string>
+    <string name="recurrence_monthly_third_saturday">El tercer sábado</string>
+    <string name="recurrence_monthly_third_sunday">El tercer domingo</string>
+    <string name="recurrence_monthly_fourth_monday">El cuarto lunes</string>
+    <string name="recurrence_monthly_fourth_tuesday">El cuarto martes</string>
+    <string name="recurrence_monthly_fourth_wednesday">El cuarto miércoles</string>
+    <string name="recurrence_monthly_fourth_thursday">El cuarto jueves</string>
+    <string name="recurrence_monthly_fourth_friday">El cuarto viernes</string>
+    <string name="recurrence_monthly_fourth_saturday">El cuarto sábado</string>
+    <string name="recurrence_monthly_fourth_sunday">El cuarto domingo</string>
+    <string name="recurrence_monthly_fifth_monday">El quinto lunes</string>
+    <string name="recurrence_monthly_fifth_tuesday">El quinto martes</string>
+    <string name="recurrence_monthly_fifth_wednesday">El quinto miércoles</string>
+    <string name="recurrence_monthly_fifth_thursday">El quinto jueves</string>
+    <string name="recurrence_monthly_fifth_friday">El quinto viernes</string>
+    <string name="recurrence_monthly_fifth_saturday">El quinto sábado</string>
+    <string name="recurrence_monthly_fifth_sunday">El quinto domingo</string>
+    <string name="recurrence_monthly_last_monday">El último lunes</string>
+    <string name="recurrence_monthly_last_tuesday">El último martes</string>
+    <string name="recurrence_monthly_last_wednesday">El último miércoles</string>
+    <string name="recurrence_monthly_last_thursday">El último jueves</string>
+    <string name="recurrence_monthly_last_friday">El último viernes</string>
+    <string name="recurrence_monthly_last_saturday">El último sábado</string>
+    <string name="recurrence_monthly_last_sunday">El último domingo</string>
 
     <!-- Reminders -->
     <string name="editor_reminders">Recordatorios</string>
@@ -308,7 +358,7 @@
     <string name="about_feat_share_label">Compartir y mapas</string>
     <string name="about_feat_share_desc">Comparta un evento como texto o como archivo .ics, abra su dirección en su aplicación de mapas — usted elige la aplicación, Agenda Tech no envía nada por sí misma. ¿Eliminado por error? «Deshacer» lo recupera.</string>
     <string name="about_feat_recurrence_label">Eventos periódicos</string>
-    <string name="about_feat_recurrence_desc">De diario a anual, intervalos personalizados, fecha de fin — edite una sola repetición o toda la serie.</string>
+    <string name="about_feat_recurrence_desc">De diario a anual, intervalos personalizados, fecha de fin; cada mes por fecha o por posición (el segundo martes, el último viernes, el último día) — edite una sola repetición o toda la serie.</string>
     <string name="about_feat_reminders_label">Recordatorios</string>
     <string name="about_feat_reminders_desc">Alarmas exactas, antelación personalizada, su propio tono. Se vuelven a programar tras un reinicio.</string>
     <string name="about_feat_import_label">Importar / exportar</string>

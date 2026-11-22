@@ -24,7 +24,9 @@ import javax.inject.Inject
 /** One-shot result of an import/export, consumed by the screen to show a message. */
 sealed interface IcsResult {
     data class Exported(val count: Int) : IcsResult
-    data class Imported(val count: Int) : IcsResult
+
+    /** [firstDateOnly] of the [count]: repeating events taken as their first date only, to be said too. */
+    data class Imported(val count: Int, val firstDateOnly: Int = 0) : IcsResult
     data object Failed : IcsResult
 
     /**
@@ -121,7 +123,7 @@ class IcsViewModel @Inject constructor(
         // planificateur. Et le widget ne voyait rien des lignes neuves pendant une demi-heure.
         if (outcome.isSuccess) agendaChanged.onAgendaChanged()
         _result.value = outcome.fold(
-            onSuccess = { IcsResult.Imported(it) },
+            onSuccess = { IcsResult.Imported(it.imported, it.firstDateOnly) },
             onFailure = { error ->
                 Timber.w("ICS import failed (%s)", error.javaClass.simpleName)
                 if (error is ImportEventsUseCase.TooManyEvents) IcsResult.TooManyEvents else IcsResult.Failed

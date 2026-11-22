@@ -17,6 +17,7 @@ private fun deviceEvent(
     deviceId: Long,
     title: String = "RDV",
     start: Long = 1_700_000_000_000L,
+    rrule: String? = null,
 ) = DeviceEvent(
     uid = uid,
     title = title,
@@ -27,7 +28,7 @@ private fun deviceEvent(
     durationRfc = null,
     eventTimeZone = "Europe/Paris",
     allDay = false,
-    rrule = null,
+    rrule = rrule,
     exDate = null,
     deviceId = deviceId,
     originalId = null,
@@ -241,6 +242,32 @@ class ImportDeviceEventsUseCaseTest {
         val useCase = ImportDeviceEventsUseCase(huge, FakeCalendarRepository(), FakeEventRepository())
 
         assertThat(useCase(listOf(1L), FALLBACK_NAME).truncated).isTrue()
+    }
+
+    @Test
+    fun `repeating events taken as their first date only are counted, across calendars`() = runTest {
+        // The default start, 14 Nov 2023 at 23:13 in Paris, is the second Tuesday of its month.
+        val two = FakeDeviceCalendars(
+            calendars = listOf(
+                DeviceCalendar(id = 1, displayName = "A", accountName = "a", colorArgb = null),
+                DeviceCalendar(id = 2, displayName = "B", accountName = "b", colorArgb = null),
+            ),
+            events = listOf(
+                deviceEvent(uid = "plain", deviceId = 1),
+                deviceEvent(uid = "second-tuesday", deviceId = 2, rrule = "FREQ=MONTHLY;BYDAY=2TU"),
+                deviceEvent(uid = "week-46", deviceId = 3, rrule = "FREQ=YEARLY;BYWEEKNO=46"),
+            ),
+        )
+        val stored = FakeEventRepository()
+        val useCase = ImportDeviceEventsUseCase(two, FakeCalendarRepository(), stored)
+
+        val result = useCase(listOf(1L, 2L), FALLBACK_NAME)
+
+        // The fake serves the same rows for both calendars: one rule it cannot follow in each.
+        assertThat(result.events).isEqualTo(6)
+        assertThat(result.firstDateOnly).isEqualTo(2)
+        assertThat(stored.rows.values.filter { it.sourceUid == "week-46" }.map { it.recurrence }).containsExactly(null, null)
+        assertThat(stored.rows.values.filter { it.sourceUid == "second-tuesday" }.all { it.recurrence != null }).isTrue()
     }
 
     @Test

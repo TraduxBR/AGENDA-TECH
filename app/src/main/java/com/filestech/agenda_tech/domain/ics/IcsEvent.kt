@@ -28,6 +28,12 @@ data class IcsEvent(
      * line and reads a yearly all-day event — which is what it is.
      */
     val kind: EventKind = EventKind.NORMAL,
+    /**
+     * Set by the decoder only: the VEVENT repeats by a rule this app cannot reproduce
+     * ([RRuleReading.FirstDateOnly]), so [recurrence] is null and the event stands for its first date.
+     * The import counts these to tell the user; the encoder ignores the field.
+     */
+    val firstDateOnly: Boolean = false,
 )
 
 /**

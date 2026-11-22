@@ -3,13 +3,12 @@ package com.filestech.agenda_tech.domain.device
 import com.filestech.agenda_tech.core.text.BidiSanitizer
 import com.filestech.agenda_tech.core.time.DAY_MILLIS
 import com.filestech.agenda_tech.core.time.TimeZones
+import com.filestech.agenda_tech.domain.ics.RRuleReader
+import com.filestech.agenda_tech.domain.ics.RRuleReading
 import com.filestech.agenda_tech.domain.ics.RfcDuration
 import com.filestech.agenda_tech.domain.model.CalendarColor
 import com.filestech.agenda_tech.domain.model.DeviceEvent
 import com.filestech.agenda_tech.domain.model.Event
-import com.filestech.agenda_tech.domain.model.RecurrenceFreq
-import com.filestech.agenda_tech.domain.model.RecurrenceRule
-import com.filestech.agenda_tech.domain.model.Weekday
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -33,17 +32,19 @@ object DeviceEventMapper {
     // RfcDuration, partage avec IcsCodec — un seul plafond, jamais une seconde copie du nombre
     // (audit AG-1). La longueur des champs, elle, reste plafonnee par BidiSanitizer.stripAndCap.
 
-    private val BYDAY_TO_WEEKDAY = mapOf(
-        "MO" to Weekday.MONDAY, "TU" to Weekday.TUESDAY, "WE" to Weekday.WEDNESDAY,
-        "TH" to Weekday.THURSDAY, "FR" to Weekday.FRIDAY, "SA" to Weekday.SATURDAY, "SU" to Weekday.SUNDAY,
-    )
-
     /** Compact iCalendar timestamps: `20250131T090000Z` (UTC) or `20250131T090000` (floating/local). */
     private val UTC_STAMP = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
     private val LOCAL_STAMP = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
     private val DATE_STAMP = DateTimeFormatter.ofPattern("yyyyMMdd")
 
-    fun toEvent(device: DeviceEvent, calendarId: Long, defaultZone: ZoneId = ZoneId.systemDefault()): Event? {
+    /**
+     * A device row as the import takes it in: the [event], and whether it repeats by a rule this app
+     * cannot reproduce — then [Event.recurrence] is null and the event stands for its first date
+     * ([RRuleReading.FirstDateOnly]), which the import counts to tell the user.
+     */
+    data class Mapped(val event: Event, val firstDateOnly: Boolean = false)
+
+    fun map(device: DeviceEvent, calendarId: Long, defaultZone: ZoneId = ZoneId.systemDefault()): Mapped? {
         val title = device.title?.let(::sanitize)?.trim().orEmpty()
         if (title.isEmpty()) return null
 
@@ -77,7 +78,8 @@ object DeviceEventMapper {
             if (end < start) return null
         }
 
-        return Event(
+        val reading = device.rrule?.let { readRRule(it, device.exDate, start, zoneId) }
+        val event = Event(
             calendarId = calendarId,
             title = title,
             description = device.description?.let(::sanitize)?.ifBlank { null },
@@ -86,9 +88,10 @@ object DeviceEventMapper {
             endUtcMillis = end,
             timeZoneId = zoneId.id,
             allDay = device.allDay,
-            recurrence = device.rrule?.let { parseRRule(it, device.exDate, zoneId) },
+            recurrence = (reading as? RRuleReading.Reproduced)?.rule,
             sourceUid = device.uid,
         )
+        return Mapped(event, firstDateOnly = reading == RRuleReading.FirstDateOnly)
     }
 
     /**
@@ -118,38 +121,18 @@ object DeviceEventMapper {
     private fun sanitize(text: String): String = BidiSanitizer.stripAndCap(text)
 
     /**
-     * Parses an RFC 5545 `RRULE` (the subset the app models) into a [RecurrenceRule], folding in the
-     * `EXDATE` column. Returns null on an unsupported/absent FREQ so the event imports as single.
+     * The provider's `RRULE` column through the reader both imports share ([RRuleReader]), with the
+     * `EXDATE` column folded in; null when the row does not repeat. What stays here is what only the
+     * provider has: an `UNTIL` that is a bare stamp, and one `EXDATE` column for the whole list.
+     *
+     * The rule's dates are counted on the start's date in [zone], the zone the series is stored and
+     * expanded in.
      */
-    private fun parseRRule(rrule: String, exDate: String?, zone: ZoneId): RecurrenceRule? = runCatching {
-        val parts = rrule.substringAfter("RRULE:", rrule)
-            .split(";")
-            .mapNotNull { token ->
-                val kv = token.split("=", limit = 2)
-                if (kv.size == 2) kv[0].trim().uppercase() to kv[1].trim() else null
-            }.toMap()
-
-        val freq = RecurrenceFreq.entries.firstOrNull { it.name == parts["FREQ"]?.uppercase() } ?: return null
-        // COUNT is filtered BEFORE deciding UNTIL: a COUNT of 0 is not a bound, so it must not
-        // suppress a perfectly good UNTIL on its way to being discarded itself — that dropped both
-        // bounds and silently turned a finite series infinite. Same order as IcsCodec.parseRRule.
-        val count = parts["COUNT"]?.toIntOrNull()?.takeIf { it >= 1 }
-        val until = if (count == null) parts["UNTIL"]?.let { parseStamp(it, zone) } else null
-
-        RecurrenceRule(
-            freq = freq,
-            interval = parts["INTERVAL"]?.toIntOrNull()
-                ?.coerceIn(1, RecurrenceRule.MAX_INTERVAL) ?: 1,
-            byWeekdays = parts["BYDAY"]
-                ?.split(",")
-                ?.mapNotNull { BYDAY_TO_WEEKDAY[it.trim().take(2).uppercase()] }
-                ?.toSet()
-                .orEmpty(),
-            count = count,
-            untilUtcMillis = until,
-            exDatesUtcMillis = parseExDates(exDate, zone),
-        )
-    }.getOrNull()
+    private fun readRRule(rrule: String, exDate: String?, startUtcMillis: Long, zone: ZoneId): RRuleReading? {
+        val value = rrule.substringAfter("RRULE:", rrule).takeIf { it.isNotBlank() } ?: return null
+        val startDate = Instant.ofEpochMilli(startUtcMillis).atZone(zone).toLocalDate()
+        return RRuleReader.read(value, startDate, parseExDates(exDate, zone)) { parseStamp(it, zone) }
+    }
 
     private fun parseExDates(exDate: String?, zone: ZoneId): List<Long> {
         if (exDate.isNullOrBlank()) return emptyList()

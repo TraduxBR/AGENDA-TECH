@@ -11,6 +11,7 @@ import com.filestech.agenda_tech.domain.model.DeletedEvents
 import com.filestech.agenda_tech.core.time.TimeZones
 import com.filestech.agenda_tech.domain.model.Event
 import com.filestech.agenda_tech.domain.model.EventKind
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceFreq
 import com.filestech.agenda_tech.domain.model.RecurrenceRule
 import com.filestech.agenda_tech.domain.model.SeriesExclusion
@@ -45,6 +46,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -250,6 +252,9 @@ class EventEditorViewModel @Inject constructor(
                 recurrenceFreq = rule?.freq,
                 recurrenceInterval = rule?.interval ?: 1,
                 recurrenceByWeekdays = rule?.byWeekdays ?: emptySet(),
+                // The kind of choice only: its weekday and rank are worked out again from the start,
+                // which the rule passes through — an imported fifth Tuesday shows as "the fifth Tuesday".
+                recurrenceMonthlyMode = rule?.monthly?.let(MonthlyMode::of) ?: MonthlyMode.DAY_OF_MONTH,
                 recurrenceEnd = recurrenceEnd,
                 recurrenceCount = rule?.count ?: it.recurrenceCount,
                 recurrenceUntilDate = untilDate,
@@ -392,6 +397,58 @@ class EventEditorViewModel @Inject constructor(
             it.recurrenceByWeekdays + weekday
         }
         it.copy(recurrenceByWeekdays = next)
+    }
+
+    fun onMonthlyModeChange(mode: MonthlyMode) = _state.update { it.copy(recurrenceMonthlyMode = mode) }
+
+    /**
+     * The form's start as [persist] saves it: its instant, in the zone the event is saved in. Its zone is
+     * the event's `timeZoneId`, and its date is what a monthly series' position is counted on.
+     *
+     * ## The zone
+     *
+     * Audit D2 — keep the zone the event was authored in; see [loadedTimeZoneId].
+     *
+     * Two deliberate exceptions, both because the zone is not a label there but part of the
+     * arithmetic:
+     *  - an ALL-DAY event's instants are the day boundaries computed in [allDayZone] by [toInstants] —
+     *    its own zone, or the phone's for a new one. That zone is stored beside them, or the boundaries
+     *    and their label would be out of step: the zone is what every view reads the dates back in.
+     *  - a NEW event has nothing to preserve.
+     *
+     * An override inherits the master's zone rather than the device's: it replaces one occurrence of
+     * that series, and the expander skips the master's instance by instant. Two rows describing the same
+     * slot in two zones is the asymmetry this audit keeps finding.
+     * `takeIf(isCanonical)` : audit DR-5. Avant D2, l'éditeur écrasait ce champ avec le fuseau de
+     * l'appareil et réparait donc accidentellement toute ligne non canonique. Préserver la valeur chargée
+     * a supprimé ce rattrapage en même temps que le défaut ; ce filtre le rétablit sans rien annuler de
+     * D2 — on ne préserve que ce qui est déjà résolvable tel quel, et `EntityMappers` ne renormalise
+     * délibérément pas à la lecture.
+     * Audit D2 + DR-5 + DR-6, dans cet ordre :
+     *  - conserver le fuseau d'auteur, sinon la réparation v6 est annulée au premier enregistrement (D2) ;
+     *  - ne conserver que ce qui est déjà résolvable tel quel, sinon on perd le rattrapage que l'ancien
+     *    écrasement offrait par accident (DR-5) ;
+     *  - et seulement si les instants n'ont pas bougé (DR-6) : une heure retapée l'est dans le fuseau de
+     *    l'appareil, la garder sous une étiquette étrangère ferait dériver toutes les occurrences
+     *    suivantes.
+     *
+     * ## The date
+     *
+     * "The second Tuesday" is counted in that zone, the one the expander anchors the series to — not on
+     * the date the form shows, which is on the phone's clock. A New York meeting at 20:00 on the second
+     * Tuesday reads Wednesday 02:00 in Paris; its rule is still the second TUESDAY, and counting it from
+     * the Wednesday would save a rule that no longer passes through its own start. The screen asks here
+     * too, so the choice it shows is the one that is saved.
+     */
+    fun savedStart(state: EventEditorUiState): ZonedDateTime {
+        val startMillis = state.toInstants().first
+        val savedZone = when {
+            state.allDay -> allDayZone
+            startMillis != loadedStartUtcMillis -> zone
+            // `ZoneId.of` gives back the very id it was given, since `isCanonical` checked exactly that.
+            else -> loadedTimeZoneId?.takeIf(TimeZones::isCanonical)?.let(ZoneId::of) ?: zone
+        }
+        return Instant.ofEpochMilli(startMillis).atZone(savedZone)
     }
 
     fun onRecurrenceEndChange(end: RecurrenceEnd) = _state.update { it.copy(recurrenceEnd = end) }
@@ -552,6 +609,7 @@ class EventEditorViewModel @Inject constructor(
         _state.update { it.copy(busy = true) }
         val current = _state.value
         val (startMillis, endMillis) = current.toInstants()
+        val saved = savedStart(current)
         val event = Event(
             id = if (asOverride) 0L else if (current.isEditing) eventId else 0L,
             calendarId = current.selectedCalendarId,
@@ -566,37 +624,8 @@ class EventEditorViewModel @Inject constructor(
             gpsCoordinates = current.gpsCoordinates.trim().ifBlank { null },
             startUtcMillis = startMillis,
             endUtcMillis = endMillis,
-            // Audit D2 — keep the zone the event was authored in; see [loadedTimeZoneId].
-            //
-            // Two deliberate exceptions, both because the zone is not a label there but part of the
-            // arithmetic:
-            //  - an ALL-DAY event's instants are the day boundaries computed in [allDayZone] a few lines
-            //    above — its own zone, or the phone's for a new one. That zone is stored beside them, or
-            //    the boundaries and their label would be out of step: the zone is what every view reads
-            //    the dates back in.
-            //  - a NEW event has nothing to preserve.
-            //
-            // An override inherits the master's zone rather than the device's: it replaces one
-            // occurrence of that series, and the expander skips the master's instance by instant. Two
-            // rows describing the same slot in two zones is the asymmetry this audit keeps finding.
-            // `takeIf(isCanonical)` : audit DR-5. Avant D2, l'éditeur écrasait ce champ avec le
-            // fuseau de l'appareil et réparait donc accidentellement toute ligne non canonique.
-            // Préserver la valeur chargée a supprimé ce rattrapage en même temps que le défaut ;
-            // ce filtre le rétablit sans rien annuler de D2 — on ne préserve que ce qui est déjà
-            // résolvable tel quel, et `EntityMappers` ne renormalise délibérément pas à la lecture.
-            // Audit D2 + DR-5 + DR-6, dans cet ordre :
-            //  - conserver le fuseau d'auteur, sinon la réparation v6 est annulée au premier
-            //    enregistrement (D2) ;
-            //  - ne conserver que ce qui est déjà résolvable tel quel, sinon on perd le rattrapage que
-            //    l'ancien écrasement offrait par accident (DR-5) ;
-            //  - et seulement si les instants n'ont pas bougé (DR-6) : une heure retapée l'est dans le
-            //    fuseau de l'appareil, la garder sous une étiquette étrangère ferait dériver toutes
-            //    les occurrences suivantes.
-            timeZoneId = when {
-                current.allDay -> allDayZone.id
-                startMillis != loadedStartUtcMillis -> zone.id
-                else -> loadedTimeZoneId?.takeIf(TimeZones::isCanonical) ?: zone.id
-            },
+            // Audit D2 + DR-5 + DR-6 — see [savedStart], whose date the monthly position is counted on too.
+            timeZoneId = saved.zone.id,
             allDay = current.allDay,
             // An override is a single event; the whole-series save keeps the recurrence rule.
             // FIAB-DUP-1 — les EXDATE du maître ne vivent dans aucun champ de l'éditeur, donc les
@@ -609,7 +638,11 @@ class EventEditorViewModel @Inject constructor(
             recurrence = if (asOverride) {
                 null
             } else {
-                current.toRecurrenceRule(loadedRecurrence?.exDatesUtcMillis.orEmpty())
+                current.toRecurrenceRule(
+                    exDatesUtcMillis = loadedRecurrence?.exDatesUtcMillis.orEmpty(),
+                    monthlyAnchor = saved.toLocalDate(),
+                    untilZone = if (current.allDay) allDayZone else zone,
+                )
             },
             colorOverride = current.colorOverride,
             recurrenceParentId = if (asOverride) eventId else loadedParentId,
@@ -796,32 +829,6 @@ class EventEditorViewModel @Inject constructor(
                 endDateTime.atZone(zone).toInstant().toEpochMilli()
         }
 
-    private fun defaultCalendarId(calendars: List<Calendar>): Long =
-        (calendars.firstOrNull { it.isDefault } ?: calendars.firstOrNull())?.id ?: 0L
-
-    private fun EventEditorUiState.toRecurrenceRule(exDatesUtcMillis: List<Long>): RecurrenceRule? {
-        val freq = recurrenceFreq ?: return null
-        val count = if (recurrenceEnd == RecurrenceEnd.AFTER_COUNT) recurrenceCount.coerceAtLeast(1) else null
-        val until = if (recurrenceEnd == RecurrenceEnd.ON_DATE) {
-            // Inclusive end date → last instant of that day, so an occurrence on it is kept. Counted in the
-            // zone the occurrences are: an all-day series' own, or the last day gains or loses one.
-            recurrenceUntilDate.plusDays(1).atStartOfDay(if (allDay) allDayZone else zone).toInstant().toEpochMilli() - 1
-        } else {
-            null
-        }
-        return RecurrenceRule(
-            freq = freq,
-            // Audit F1 — clamped on the way out too, not just on input: this is the one place the
-            // editor constructs the rule, and an unbounded value here would trip the require() in
-            // RecurrenceRule.init and crash the save instead of being refused in the field.
-            interval = recurrenceInterval.coerceIn(1, MAX_INTERVAL),
-            byWeekdays = if (freq == RecurrenceFreq.WEEKLY) recurrenceByWeekdays else emptySet(),
-            count = count,
-            untilUtcMillis = until,
-            exDatesUtcMillis = exDatesUtcMillis,
-        )
-    }
-
     private companion object {
         const val NEW = -1L
         const val NO_DATE = -1L
@@ -833,6 +840,46 @@ class EventEditorViewModel @Inject constructor(
 
         const val MAX_COUNT = 999
     }
+}
+
+// Two helpers that need nothing of the ViewModel's own, kept beside it rather than in it: the class sits
+// at the size detekt allows (TooManyFunctions), and a pure function of the form reads as one here.
+
+private fun defaultCalendarId(calendars: List<Calendar>): Long =
+    (calendars.firstOrNull { it.isDefault } ?: calendars.firstOrNull())?.id ?: 0L
+
+/**
+ * The rule the form describes — the one place the editor constructs it. [monthlyAnchor] is the start's
+ * date the monthly position is counted on (`EventEditorViewModel.savedStart`); [untilZone] the zone the
+ * occurrences are in, which the inclusive end date is counted in.
+ */
+private fun EventEditorUiState.toRecurrenceRule(
+    exDatesUtcMillis: List<Long>,
+    monthlyAnchor: LocalDate,
+    untilZone: ZoneId,
+): RecurrenceRule? {
+    val freq = recurrenceFreq ?: return null
+    val count = if (recurrenceEnd == RecurrenceEnd.AFTER_COUNT) recurrenceCount.coerceAtLeast(1) else null
+    val until = if (recurrenceEnd == RecurrenceEnd.ON_DATE) {
+        // Inclusive end date → last instant of that day, so an occurrence on it is kept. Counted in the
+        // zone the occurrences are: an all-day series' own, or the last day gains or loses one.
+        recurrenceUntilDate.plusDays(1).atStartOfDay(untilZone).toInstant().toEpochMilli() - 1
+    } else {
+        null
+    }
+    return RecurrenceRule(
+        freq = freq,
+        // Audit F1 — clamped on the way out too, not just on input: an unbounded value here would trip
+        // the require() in RecurrenceRule.init and crash the save instead of being refused in the field.
+        interval = recurrenceInterval.coerceIn(1, RecurrenceRule.MAX_INTERVAL),
+        byWeekdays = if (freq == RecurrenceFreq.WEEKLY) recurrenceByWeekdays else emptySet(),
+        count = count,
+        untilUtcMillis = until,
+        exDatesUtcMillis = exDatesUtcMillis,
+        // Worked out from the start now, not kept from when it was chosen: a start moved since then
+        // must not leave a rule that misses it (see MonthlyMode).
+        monthly = if (freq == RecurrenceFreq.MONTHLY) recurrenceMonthlyMode.ruleOn(monthlyAnchor) else MonthlyRule.SameDay,
+    )
 }
 
 /**

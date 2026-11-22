@@ -33,6 +33,13 @@
         <item quantity="one">%1$d event imported</item>
         <item quantity="other">%1$d events imported</item>
     </plurals>
+    <!-- Added after the result of an .ics or device-calendar import, when some repeating events
+         follow a rule the app cannot reproduce (BYWEEKNO, HOURLY…): they were imported as their first
+         date only, and saying so is the alternative to showing them on dates nobody chose. -->
+    <plurals name="import_first_date_only">
+        <item quantity="one">%1$d repeating event uses a rule Agenda Tech cannot reproduce: only its first date was imported.</item>
+        <item quantity="other">%1$d repeating events use a rule Agenda Tech cannot reproduce: only their first date was imported.</item>
+    </plurals>
     <string name="ics_error">Couldn\'t read the calendar file</string>
     <string name="ics_import_too_many">This file holds more events than the app accepts (%1$d maximum). Split it and import the parts.</string>
 
@@ -148,6 +155,54 @@
         <item quantity="other">occurrences</item>
     </plurals>
     <string name="recurrence_end_on">On</string>
+    <!-- Monthly series: on which day of the month, offered once "Monthly" is picked. One whole phrase
+         per position AND weekday, never an ordinal word put before a weekday name: other languages
+         agree the ordinal with the weekday (Italian "il secondo martedì" but "la seconda domenica"),
+         and plain <string> keys are what tools/check-translations.py compares. -->
+    <string name="recurrence_monthly_on_day">On day %1$d</string>
+    <string name="recurrence_monthly_last_day">On the last day of the month</string>
+    <string name="recurrence_monthly_first_monday">On the first Monday</string>
+    <string name="recurrence_monthly_first_tuesday">On the first Tuesday</string>
+    <string name="recurrence_monthly_first_wednesday">On the first Wednesday</string>
+    <string name="recurrence_monthly_first_thursday">On the first Thursday</string>
+    <string name="recurrence_monthly_first_friday">On the first Friday</string>
+    <string name="recurrence_monthly_first_saturday">On the first Saturday</string>
+    <string name="recurrence_monthly_first_sunday">On the first Sunday</string>
+    <string name="recurrence_monthly_second_monday">On the second Monday</string>
+    <string name="recurrence_monthly_second_tuesday">On the second Tuesday</string>
+    <string name="recurrence_monthly_second_wednesday">On the second Wednesday</string>
+    <string name="recurrence_monthly_second_thursday">On the second Thursday</string>
+    <string name="recurrence_monthly_second_friday">On the second Friday</string>
+    <string name="recurrence_monthly_second_saturday">On the second Saturday</string>
+    <string name="recurrence_monthly_second_sunday">On the second Sunday</string>
+    <string name="recurrence_monthly_third_monday">On the third Monday</string>
+    <string name="recurrence_monthly_third_tuesday">On the third Tuesday</string>
+    <string name="recurrence_monthly_third_wednesday">On the third Wednesday</string>
+    <string name="recurrence_monthly_third_thursday">On the third Thursday</string>
+    <string name="recurrence_monthly_third_friday">On the third Friday</string>
+    <string name="recurrence_monthly_third_saturday">On the third Saturday</string>
+    <string name="recurrence_monthly_third_sunday">On the third Sunday</string>
+    <string name="recurrence_monthly_fourth_monday">On the fourth Monday</string>
+    <string name="recurrence_monthly_fourth_tuesday">On the fourth Tuesday</string>
+    <string name="recurrence_monthly_fourth_wednesday">On the fourth Wednesday</string>
+    <string name="recurrence_monthly_fourth_thursday">On the fourth Thursday</string>
+    <string name="recurrence_monthly_fourth_friday">On the fourth Friday</string>
+    <string name="recurrence_monthly_fourth_saturday">On the fourth Saturday</string>
+    <string name="recurrence_monthly_fourth_sunday">On the fourth Sunday</string>
+    <string name="recurrence_monthly_fifth_monday">On the fifth Monday</string>
+    <string name="recurrence_monthly_fifth_tuesday">On the fifth Tuesday</string>
+    <string name="recurrence_monthly_fifth_wednesday">On the fifth Wednesday</string>
+    <string name="recurrence_monthly_fifth_thursday">On the fifth Thursday</string>
+    <string name="recurrence_monthly_fifth_friday">On the fifth Friday</string>
+    <string name="recurrence_monthly_fifth_saturday">On the fifth Saturday</string>
+    <string name="recurrence_monthly_fifth_sunday">On the fifth Sunday</string>
+    <string name="recurrence_monthly_last_monday">On the last Monday</string>
+    <string name="recurrence_monthly_last_tuesday">On the last Tuesday</string>
+    <string name="recurrence_monthly_last_wednesday">On the last Wednesday</string>
+    <string name="recurrence_monthly_last_thursday">On the last Thursday</string>
+    <string name="recurrence_monthly_last_friday">On the last Friday</string>
+    <string name="recurrence_monthly_last_saturday">On the last Saturday</string>
+    <string name="recurrence_monthly_last_sunday">On the last Sunday</string>
 
     <!-- Reminders -->
     <string name="editor_reminders">Reminders</string>
@@ -300,7 +355,7 @@
     <string name="about_feat_share_label">Share and maps</string>
     <string name="about_feat_share_desc">Share an event as text or as an .ics file, open its address in your maps app — you pick the app, Agenda Tech sends nothing itself. Deleted by mistake? Undo brings it back.</string>
     <string name="about_feat_recurrence_label">Recurring events</string>
-    <string name="about_feat_recurrence_desc">Daily to yearly, custom intervals, end date — edit a single occurrence or the whole series.</string>
+    <string name="about_feat_recurrence_desc">Daily to yearly, custom intervals, end date; monthly by date or by position (the second Tuesday, the last Friday, the last day) — edit a single occurrence or the whole series.</string>
     <string name="about_feat_reminders_label">Reminders</string>
     <string name="about_feat_reminders_desc">Exact alarms, custom time, your own ringtone. Re-armed after a reboot.</string>
     <string name="about_feat_import_label">Import / export</string>

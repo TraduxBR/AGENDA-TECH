@@ -1,5 +1,7 @@
 package com.filestech.agenda_tech.domain.model
 
+import timber.log.Timber
+
 /**
  * A recurrence rule attached to an [Event], modelled on the subset of RFC 5545 `RRULE` an
  * agenda needs. A null recurrence on the event means "single occurrence".
@@ -7,6 +9,9 @@ package com.filestech.agenda_tech.domain.model
  * Invariants (enforced in [init]):
  *  - [interval] ≥ 1.
  *  - [count] and [untilUtcMillis] are mutually exclusive (an RRULE has at most one bound).
+ *  - [monthly] is [MonthlyRule.SameDay] unless [freq] is [RecurrenceFreq.MONTHLY]: a position in the
+ *    month means nothing to another frequency, and accepting one would let two rows that describe the
+ *    same series compare unequal.
  *  - [byWeekdays] is only meaningful for [RecurrenceFreq.WEEKLY]; it is ignored otherwise.
  *
  * [exDatesUtcMillis] holds the start instants of cancelled occurrences (RFC 5545 `EXDATE`) —
@@ -24,6 +29,8 @@ data class RecurrenceRule(
     val count: Int? = null,
     val untilUtcMillis: Long? = null,
     val exDatesUtcMillis: List<Long> = emptyList(),
+    /** Which day of each month a [RecurrenceFreq.MONTHLY] series falls on; see [MonthlyRule]. */
+    val monthly: MonthlyRule = MonthlyRule.SameDay,
 ) {
     init {
         require(interval in 1..MAX_INTERVAL) {
@@ -33,6 +40,9 @@ data class RecurrenceRule(
             "RRULE cannot set both COUNT and UNTIL"
         }
         require(count == null || count >= 1) { "RRULE count must be >= 1, was $count" }
+        require(monthly == MonthlyRule.SameDay || freq == RecurrenceFreq.MONTHLY) {
+            "a position in the month ($monthly) needs FREQ=MONTHLY, was $freq"
+        }
     }
 
     /** True when the rule is open-ended (neither a COUNT nor an UNTIL bound). */
@@ -64,5 +74,89 @@ data class RecurrenceRule(
          * enforced in [init] rather than left to callers.
          */
         const val MAX_INTERVAL = 999
+    }
+}
+
+/**
+ * The day of the month a monthly series falls on — RFC 5545 `BYDAY` with an ordinal, or
+ * `BYMONTHDAY=-1`, under `FREQ=MONTHLY`.
+ *
+ * The weekday and the rank are stored, not derived from the series' start on every read: the expander,
+ * the `.ics` export and the backup each need them, and none of them should have to know in which zone
+ * the start was counted. The editor derives them from the start when it saves (see
+ * `ui/screens/editor/MonthlyMode`), so the two cannot drift apart through it.
+ */
+sealed interface MonthlyRule {
+
+    /** The start's day number: "on day 10". A month without that day (the 31st in April) is skipped. */
+    data object SameDay : MonthlyRule
+
+    /**
+     * The [ordinal]-th [weekday] of the month — 1 to 5, or [LAST] for the last one: "on the second
+     * Tuesday", "on the last Friday". A month without a fifth one is skipped, as RFC 5545 says.
+     */
+    data class NthWeekday(val ordinal: Int, val weekday: Weekday) : MonthlyRule {
+        init {
+            require(ordinal in 1..MAX_ORDINAL || ordinal == LAST) {
+                "a monthly position is 1..$MAX_ORDINAL or $LAST, was $ordinal"
+            }
+        }
+    }
+
+    /** The month's last day, whatever its length. */
+    data object LastDay : MonthlyRule
+
+    /**
+     * The two plain numbers the database and the backup keep: [storedOrdinal] and [storedWeekdayIso].
+     *
+     * | rule              | ordinal | weekday (ISO) |
+     * |-------------------|---------|---------------|
+     * | [SameDay]         | null    | null          |
+     * | [NthWeekday]      | 1..5/-1 | 1..7          |
+     * | [LastDay]         | -1      | null          |
+     *
+     * Modelled on RFC 5545 itself — `BYDAY=-1FR` is "the -1st Friday", `BYMONTHDAY=-1` "the -1st day" —
+     * and chosen so that a row written before the columns existed (both null) reads as [SameDay], which
+     * is what every monthly series was until then. Append-only: never reuse a combination.
+     */
+    val storedOrdinal: Int?
+        get() = when (this) {
+            SameDay -> null
+            is NthWeekday -> ordinal
+            LastDay -> LAST
+        }
+
+    /** See [storedOrdinal]. */
+    val storedWeekdayIso: Int?
+        get() = (this as? NthWeekday)?.weekday?.isoValue
+
+    companion object {
+        /** The ordinal RFC 5545 gives to "the last one". */
+        const val LAST = -1
+
+        /** No month holds a sixth weekday of any kind. */
+        const val MAX_ORDINAL = 5
+
+        /**
+         * The rule [storedOrdinal] and [storedWeekdayIso] describe, for a series of frequency [freq].
+         *
+         * Never throws: both readers (the database, an `.atbak`) run on data this build did not
+         * necessarily write, and an exception there would make the whole agenda unreadable — the
+         * scenario `RecurrenceRule.MAX_INTERVAL` describes. A combination this app never writes (a
+         * hand-edited backup, a row from a future build) reads as [SameDay], the series' day number,
+         * which is also what it read as before this field existed.
+         */
+        fun fromStored(freq: RecurrenceFreq, ordinal: Int?, weekdayIso: Int?): MonthlyRule {
+            if (freq != RecurrenceFreq.MONTHLY || ordinal == null) return SameDay
+            val rankOk = ordinal in 1..MAX_ORDINAL || ordinal == LAST
+            return when {
+                weekdayIso == null && ordinal == LAST -> LastDay
+                weekdayIso != null && weekdayIso in 1..Weekday.entries.size && rankOk ->
+                    NthWeekday(ordinal, Weekday.fromIso(weekdayIso))
+                else -> SameDay.also {
+                    Timber.w("Unknown monthly position (%d, %s) — read as the same day", ordinal, weekdayIso)
+                }
+            }
+        }
     }
 }

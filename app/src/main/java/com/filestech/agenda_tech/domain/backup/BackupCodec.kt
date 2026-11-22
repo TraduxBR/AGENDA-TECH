@@ -6,6 +6,7 @@ import com.filestech.agenda_tech.domain.model.Calendar
 import com.filestech.agenda_tech.domain.model.CalendarColor
 import com.filestech.agenda_tech.domain.model.Event
 import com.filestech.agenda_tech.domain.model.EventKind
+import com.filestech.agenda_tech.domain.model.MonthlyRule
 import com.filestech.agenda_tech.domain.model.RecurrenceFreq
 import com.filestech.agenda_tech.domain.model.RecurrenceRule
 import com.filestech.agenda_tech.domain.model.Weekday
@@ -86,6 +87,8 @@ object BackupCodec {
         rruleCount = recurrence?.count,
         rruleUntilUtcMillis = recurrence?.untilUtcMillis,
         rruleExDatesUtcMillis = recurrence?.exDatesUtcMillis.orEmpty(),
+        rruleMonthlyOrdinal = recurrence?.monthly?.storedOrdinal,
+        rruleMonthlyWeekdayIso = recurrence?.monthly?.storedWeekdayIso,
         recurrenceParentId = recurrenceParentId,
         originalStartUtcMillis = originalStartUtcMillis,
         reminderMinutes = reminderMinutes,
@@ -141,9 +144,9 @@ object BackupCodec {
         // hand-edited file could put a CRLF here, and this value reaches the .ics exporter.
         timeZoneId = TimeZones.normalize(timeZoneId, ZoneId.systemDefault()),
         allDay = allDay,
-        recurrence = rruleFreqRaw?.let { freqRaw ->
+        recurrence = rruleFreqRaw?.let(RecurrenceFreq::fromRaw)?.let { freq ->
             RecurrenceRule(
-                freq = RecurrenceFreq.fromRaw(freqRaw),
+                freq = freq,
                 // Audit F1 — same clamp as the DB read: a .atbak taken by an affected build can carry
                 // an out-of-range interval, and it is the user's own legitimate backup. Without this
                 // the new require() in RecurrenceRule.init rejects the whole restore as unreadable.
@@ -152,6 +155,9 @@ object BackupCodec {
                 count = rruleCount,
                 untilUtcMillis = rruleUntilUtcMillis,
                 exDatesUtcMillis = rruleExDatesUtcMillis,
+                // The database's reader, so a backup and the database cannot read the same two numbers
+                // two ways; like it, it never throws — a restore is attempted on the day the agenda is gone.
+                monthly = MonthlyRule.fromStored(freq, rruleMonthlyOrdinal, rruleMonthlyWeekdayIso),
             )
         },
         colorOverride = colorOverrideRaw?.let { CalendarColor.fromRaw(it) },

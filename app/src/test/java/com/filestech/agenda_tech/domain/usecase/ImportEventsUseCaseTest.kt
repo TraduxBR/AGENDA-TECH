@@ -44,7 +44,7 @@ class ImportEventsUseCaseTest {
         calendars.upsert(Calendar(name = "Autre", isDefault = false))
         val defaultId = calendars.upsert(Calendar(name = "Perso", isDefault = true))
 
-        val count = useCase(ics(vevent("u1", "RDV")), ZONE)
+        val count = useCase(ics(vevent("u1", "RDV")), ZONE).imported
 
         assertThat(count).isEqualTo(1)
         assertThat(events.rows.values.single().calendarId).isEqualTo(defaultId)
@@ -52,7 +52,7 @@ class ImportEventsUseCaseTest {
 
     @Test
     fun `does nothing when no calendar exists yet`() = runTest {
-        val count = useCase(ics(vevent("u1", "RDV")), ZONE)
+        val count = useCase(ics(vevent("u1", "RDV")), ZONE).imported
 
         assertThat(count).isEqualTo(0)
         assertThat(events.rows).isEmpty()
@@ -86,16 +86,36 @@ class ImportEventsUseCaseTest {
     fun `an empty or invalid document imports nothing`() = runTest {
         calendars.upsert(Calendar(name = "Perso", isDefault = true))
 
-        assertThat(useCase("", ZONE)).isEqualTo(0)
-        assertThat(useCase("pas du tout un ics", ZONE)).isEqualTo(0)
+        assertThat(useCase("", ZONE).imported).isEqualTo(0)
+        assertThat(useCase("pas du tout un ics", ZONE).imported).isEqualTo(0)
         assertThat(events.rows).isEmpty()
+    }
+
+    @Test
+    fun `repeating events taken as their first date only are counted, the others not`() = runTest {
+        calendars.upsert(Calendar(name = "Perso", isDefault = true))
+        fun repeating(uid: String, rrule: String) = vevent(uid, "RDV $uid").replace("END:VEVENT", "RRULE:$rrule\nEND:VEVENT")
+        val file = ics(
+            vevent("single", "Une fois"),
+            // 21 Nov 2025 is the third Friday: this one is reproduced.
+            repeating("third-friday", "FREQ=MONTHLY;BYDAY=3FR"),
+            repeating("by-week-number", "FREQ=YEARLY;BYWEEKNO=47"),
+            repeating("hourly", "FREQ=HOURLY;COUNT=3"),
+        )
+
+        val result = useCase(file, ZONE)
+
+        assertThat(result).isEqualTo(ImportEventsUseCase.Result(imported = 4, firstDateOnly = 2))
+        // Taken as their first date: in the agenda, as single events.
+        assertThat(events.rows.values.filter { it.recurrence == null }.map { it.title })
+            .containsExactly("Une fois", "RDV by-week-number", "RDV hourly")
     }
 
     @Test
     fun `an unparseable time zone falls back instead of failing`() = runTest {
         calendars.upsert(Calendar(name = "Perso", isDefault = true))
 
-        val count = useCase(ics(vevent("u1", "RDV")), "Pas/Une/Zone")
+        val count = useCase(ics(vevent("u1", "RDV")), "Pas/Une/Zone").imported
 
         assertThat(count).isEqualTo(1)
     }
@@ -126,7 +146,7 @@ class ImportEventsUseCaseTest {
         calendars.stored += Calendar(id = 1, name = "Perso", isDefault = true)
         val atLimit = ics(*Array(ImportLimits.MAX_EVENTS) { vevent("u$it", "RDV $it") })
 
-        assertThat(useCase(atLimit, ZONE)).isEqualTo(ImportLimits.MAX_EVENTS)
+        assertThat(useCase(atLimit, ZONE).imported).isEqualTo(ImportLimits.MAX_EVENTS)
     }
 
     // --- UID partagés : le cas que la RFC autorise et que personne ne testait --------------------
@@ -150,7 +170,7 @@ class ImportEventsUseCaseTest {
             vevent("serie@example.com", "Cours déplacé", start = "20251128T140000Z"),
         )
 
-        assertThat(useCase(fichier, ZONE)).isEqualTo(2)
+        assertThat(useCase(fichier, ZONE).imported).isEqualTo(2)
         assertThat(events.rows).hasSize(2)
     }
 

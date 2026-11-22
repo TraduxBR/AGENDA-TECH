@@ -57,6 +57,11 @@ data class EventEditorUiState(
     val recurrenceInterval: Int = 1,
     /** Weekly BYDAY selection (only meaningful when [recurrenceFreq] is WEEKLY). */
     val recurrenceByWeekdays: Set<Weekday> = emptySet(),
+    /**
+     * Which day of the month a MONTHLY series falls on (only meaningful when [recurrenceFreq] is MONTHLY):
+     * a kind of choice, turned into a rule from the start when shown and when saved — see [MonthlyMode].
+     */
+    val recurrenceMonthlyMode: MonthlyMode = MonthlyMode.DAY_OF_MONTH,
     val recurrenceEnd: RecurrenceEnd = RecurrenceEnd.NEVER,
     val recurrenceCount: Int = 10,
     val recurrenceUntilDate: LocalDate,

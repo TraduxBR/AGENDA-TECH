@@ -42,6 +42,8 @@ abstract class AppDatabase : RoomDatabase() {
         // v6 (time-zone repair): no schema change — repairs events.time_zone values written
         //    unresolvable by the .ics importer before audit F3. See Migrations.MIGRATION_5_6.
         // v7 (birthdays): events.kind — 0 ordinary, 1 birthday. NOT NULL DEFAULT 0, additive.
-        const val SCHEMA_VERSION = 7
+        // v8 (monthly by position): events.rrule_monthly_ordinal + rrule_monthly_weekday, both nullable;
+        //    null reads as the day number, what every monthly row meant before. Additive.
+        const val SCHEMA_VERSION = 8
     }
 }

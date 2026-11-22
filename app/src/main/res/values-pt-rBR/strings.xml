@@ -32,6 +32,11 @@
         <item quantity="many">%1$d de eventos importados</item>
         <item quantity="other">%1$d eventos importados</item>
     </plurals>
+    <plurals name="import_first_date_only">
+        <item quantity="one">%1$d evento recorrente segue uma regra que o Agenda Tech não consegue reproduzir: só a primeira data dele foi importada.</item>
+        <item quantity="many">%1$d de eventos recorrentes seguem uma regra que o Agenda Tech não consegue reproduzir: só a primeira data de cada um foi importada.</item>
+        <item quantity="other">%1$d eventos recorrentes seguem uma regra que o Agenda Tech não consegue reproduzir: só a primeira data de cada um foi importada.</item>
+    </plurals>
     <string name="ics_error">Não foi possível ler o arquivo de calendário</string>
     <string name="ics_import_too_many">Este arquivo contém mais eventos do que o aplicativo permite (máximo de %1$d). Divida o arquivo e importe cada parte separadamente.</string>
 
@@ -157,6 +162,54 @@
         <item quantity="other">ocorrências</item>
     </plurals>
     <string name="recurrence_end_on">Em</string>
+    <!-- Monthly series: one whole phrase per position and weekday (see the English file): the days
+         "-feira" are feminine, sábado and domingo masculine, and the ordinal agrees with each. Three
+         phrases repeat a word because Portuguese names those weekdays by ordinals ("a segunda
+         segunda-feira" is the second Monday): lint's Typos check is told so on each of them. -->
+    <string name="recurrence_monthly_on_day">No dia %1$d</string>
+    <string name="recurrence_monthly_last_day">No último dia do mês</string>
+    <string name="recurrence_monthly_first_monday">Na primeira segunda-feira</string>
+    <string name="recurrence_monthly_first_tuesday">Na primeira terça-feira</string>
+    <string name="recurrence_monthly_first_wednesday">Na primeira quarta-feira</string>
+    <string name="recurrence_monthly_first_thursday">Na primeira quinta-feira</string>
+    <string name="recurrence_monthly_first_friday">Na primeira sexta-feira</string>
+    <string name="recurrence_monthly_first_saturday">No primeiro sábado</string>
+    <string name="recurrence_monthly_first_sunday">No primeiro domingo</string>
+    <string name="recurrence_monthly_second_monday" tools:ignore="Typos">Na segunda segunda-feira</string>
+    <string name="recurrence_monthly_second_tuesday">Na segunda terça-feira</string>
+    <string name="recurrence_monthly_second_wednesday">Na segunda quarta-feira</string>
+    <string name="recurrence_monthly_second_thursday">Na segunda quinta-feira</string>
+    <string name="recurrence_monthly_second_friday">Na segunda sexta-feira</string>
+    <string name="recurrence_monthly_second_saturday">No segundo sábado</string>
+    <string name="recurrence_monthly_second_sunday">No segundo domingo</string>
+    <string name="recurrence_monthly_third_monday">Na terceira segunda-feira</string>
+    <string name="recurrence_monthly_third_tuesday">Na terceira terça-feira</string>
+    <string name="recurrence_monthly_third_wednesday">Na terceira quarta-feira</string>
+    <string name="recurrence_monthly_third_thursday">Na terceira quinta-feira</string>
+    <string name="recurrence_monthly_third_friday">Na terceira sexta-feira</string>
+    <string name="recurrence_monthly_third_saturday">No terceiro sábado</string>
+    <string name="recurrence_monthly_third_sunday">No terceiro domingo</string>
+    <string name="recurrence_monthly_fourth_monday">Na quarta segunda-feira</string>
+    <string name="recurrence_monthly_fourth_tuesday">Na quarta terça-feira</string>
+    <string name="recurrence_monthly_fourth_wednesday" tools:ignore="Typos">Na quarta quarta-feira</string>
+    <string name="recurrence_monthly_fourth_thursday">Na quarta quinta-feira</string>
+    <string name="recurrence_monthly_fourth_friday">Na quarta sexta-feira</string>
+    <string name="recurrence_monthly_fourth_saturday">No quarto sábado</string>
+    <string name="recurrence_monthly_fourth_sunday">No quarto domingo</string>
+    <string name="recurrence_monthly_fifth_monday">Na quinta segunda-feira</string>
+    <string name="recurrence_monthly_fifth_tuesday">Na quinta terça-feira</string>
+    <string name="recurrence_monthly_fifth_wednesday">Na quinta quarta-feira</string>
+    <string name="recurrence_monthly_fifth_thursday" tools:ignore="Typos">Na quinta quinta-feira</string>
+    <string name="recurrence_monthly_fifth_friday">Na quinta sexta-feira</string>
+    <string name="recurrence_monthly_fifth_saturday">No quinto sábado</string>
+    <string name="recurrence_monthly_fifth_sunday">No quinto domingo</string>
+    <string name="recurrence_monthly_last_monday">Na última segunda-feira</string>
+    <string name="recurrence_monthly_last_tuesday">Na última terça-feira</string>
+    <string name="recurrence_monthly_last_wednesday">Na última quarta-feira</string>
+    <string name="recurrence_monthly_last_thursday">Na última quinta-feira</string>
+    <string name="recurrence_monthly_last_friday">Na última sexta-feira</string>
+    <string name="recurrence_monthly_last_saturday">No último sábado</string>
+    <string name="recurrence_monthly_last_sunday">No último domingo</string>
 
     <!-- Lembretes -->
     <string name="editor_reminders">Lembretes</string>
@@ -310,7 +363,7 @@
     <string name="about_feat_share_label">Compartilhamento e mapas</string>
     <string name="about_feat_share_desc">Compartilhe um evento como texto ou arquivo .ics e abra seu endereço no aplicativo de mapas de sua preferência — o Agenda Tech não envia nenhuma informação por conta própria. Excluiu algo por engano? Use Desfazer para restaurar.</string>
     <string name="about_feat_recurrence_label">Eventos recorrentes</string>
-    <string name="about_feat_recurrence_desc">Repetições diárias, semanais, mensais ou anuais, intervalos personalizados e data de término — edite uma única ocorrência ou toda a série.</string>
+    <string name="about_feat_recurrence_desc">Repetições diárias, semanais, mensais ou anuais, intervalos personalizados e data de término; todo mês por data ou por posição (a segunda terça-feira, a última sexta-feira, o último dia) — edite uma única ocorrência ou toda a série.</string>
     <string name="about_feat_reminders_label">Lembretes</string>
     <string name="about_feat_reminders_desc">Alarmes exatos, horários personalizados e toque de sua preferência. Os lembretes são reativados após a reinicialização do dispositivo.</string>
     <string name="about_feat_import_label">Importação / exportação</string>
