@@ -40,8 +40,9 @@ class ImportEventsUseCase @Inject constructor(
         Exception("ics file holds $found events, over the ${ImportLimits.MAX_EVENTS} ceiling")
 
     /**
-     * [imported] events written; of them, [firstDateOnly] repeat by a rule this app cannot reproduce
-     * and stand for their first date only (`IcsEvent.firstDateOnly`) — said to the user, never silent.
+     * [imported] events written. [firstDateOnly]: the file's events that repeat by a rule this app cannot
+     * reproduce (`IcsEvent.firstDateOnly`) — written as their first date, or, for one that would have
+     * updated a series the agenda holds, not written at all ([keepsStoredSeries]). Said, never silent.
      */
     data class Result(val imported: Int, val firstDateOnly: Int = 0)
 

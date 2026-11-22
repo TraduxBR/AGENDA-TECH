@@ -50,9 +50,10 @@ class ImportDeviceEventsUseCase @Inject constructor(
          */
         val truncated: Boolean = false,
         /**
-         * Of [events], how many repeat by a rule this app cannot reproduce and were imported as their
-         * first date only (see `RRuleReading.FirstDateOnly`). Said apart from the outcome above, which it
-         * qualifies rather than replaces: such an import neither failed nor stopped short.
+         * How many rows read repeat by a rule this app cannot reproduce (see `RRuleReading.FirstDateOnly`):
+         * imported as their first date only, or — for one that would have updated a series already here —
+         * not written at all, the series left as it was ([keepsStoredSeries]). Said apart from the outcome
+         * above, which it qualifies rather than replaces: such an import neither failed nor stopped short.
          */
         val firstDateOnly: Int = 0,
     )
