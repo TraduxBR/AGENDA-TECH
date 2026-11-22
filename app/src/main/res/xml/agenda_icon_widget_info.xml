@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- targetCell* are read from Android 12 (API 31); before, minWidth/minHeight size the widget. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:targetApi="31"
     android:minWidth="50dp"
     android:minHeight="50dp"
     android:targetCellWidth="1"

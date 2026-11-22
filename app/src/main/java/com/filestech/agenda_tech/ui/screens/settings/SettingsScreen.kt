@@ -6,6 +6,7 @@ import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import androidx.annotation.RequiresApi
 import android.provider.Settings
 import com.filestech.agenda_tech.ui.util.rememberAppResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -657,6 +658,7 @@ private fun ringtoneTitle(uri: String?): String {
  * would do nothing, and the user would conclude the feature is broken. The app's details page is one
  * tap away from the language instead.
  */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private fun openAppLanguageSettings(context: Context) {
     val app = Uri.fromParts("package", context.packageName, null)
     val language = Intent(Settings.ACTION_APP_LOCALE_SETTINGS, app).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

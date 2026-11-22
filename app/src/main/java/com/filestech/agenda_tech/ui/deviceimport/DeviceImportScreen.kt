@@ -103,13 +103,14 @@ fun DeviceImportScreen(
             // (rien n'a mal tourné) ni un succès (il manque des événements) : la confondre avec l'un
             // ou l'autre, c'est la taire.
             val message = when {
-                it.failedCalendars > 0 -> resources.getString(
-                    R.string.device_import_partial, it.events, it.calendars, it.failedCalendars,
+                // The plural is chosen on the number of events, the first argument: "1 event imported".
+                it.failedCalendars > 0 -> resources.getQuantityString(
+                    R.plurals.device_import_partial, it.events, it.events, it.calendars, it.failedCalendars,
                 )
-                it.truncated -> resources.getString(
-                    R.string.device_import_truncated, it.events, it.calendars, ImportLimits.MAX_EVENTS,
+                it.truncated -> resources.getQuantityString(
+                    R.plurals.device_import_truncated, it.events, it.events, it.calendars, ImportLimits.MAX_EVENTS,
                 )
-                else -> resources.getString(R.string.device_import_done, it.events, it.calendars)
+                else -> resources.getQuantityString(R.plurals.device_import_done, it.events, it.events, it.calendars)
             }
             android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
             viewModel.consumeResult()

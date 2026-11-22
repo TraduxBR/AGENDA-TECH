@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Initial layout shown by the launcher until Glance renders the real content. -->
+<!-- Initial layout shown by the launcher until Glance renders the real content. Its background is the
+     only one drawn: a widget is drawn by the launcher, not in a window of this app, so the app theme
+     lint infers paints nothing behind it (Overdraw does not apply). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/brand_blue">
+    android:background="@color/brand_blue"
+    tools:ignore="Overdraw">
 
     <TextView
         android:layout_width="wrap_content"

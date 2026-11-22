@@ -2,7 +2,7 @@ package com.filestech.agenda_tech.data.backup
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.filestech.agenda_tech.core.di.IoDispatcher
 import com.filestech.agenda_tech.domain.backup.AutoBackupTarget
@@ -129,7 +129,7 @@ class SafAutoBackupTarget @Inject constructor(
      */
     private suspend fun folder(): DocumentFile? {
         val uriString = settingsRepository.current().autoBackupFolderUri ?: return null
-        val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return null
+        val uri = runCatching { uriString.toUri() }.getOrNull() ?: return null
         val held = context.contentResolver.persistedUriPermissions.any {
             it.uri == uri && it.isWritePermission
         }

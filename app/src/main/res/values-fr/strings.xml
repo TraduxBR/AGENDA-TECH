@@ -366,9 +366,21 @@
     <string name="device_import_failed">Les calendriers de l’appareil n’ont pas pu être lus. Rien n’a été modifié — réessayez.</string>
     <string name="device_import_action">Importer (%1$d)</string>
     <string name="device_import_running">Import en cours…</string>
-    <string name="device_import_done">%1$d événements importés depuis %2$d calendrier(s).</string>
-    <string name="device_import_partial">%1$d événements importés depuis %2$d calendrier(s). %3$d calendrier(s) n\'ont pas pu être lus.</string>
-    <string name="device_import_truncated">%1$d événements importés depuis %2$d calendrier(s). La sélection en contenait plus que les %3$d acceptés en un seul import — importez les calendriers restants séparément.</string>
+    <plurals name="device_import_done">
+        <item quantity="one">%1$d événement importé. Calendriers lus : %2$d.</item>
+        <item quantity="many">%1$d d’événements importés. Calendriers lus : %2$d.</item>
+        <item quantity="other">%1$d événements importés. Calendriers lus : %2$d.</item>
+    </plurals>
+    <plurals name="device_import_partial">
+        <item quantity="one">%1$d événement importé. Calendriers lus : %2$d. Calendriers illisibles : %3$d.</item>
+        <item quantity="many">%1$d d’événements importés. Calendriers lus : %2$d. Calendriers illisibles : %3$d.</item>
+        <item quantity="other">%1$d événements importés. Calendriers lus : %2$d. Calendriers illisibles : %3$d.</item>
+    </plurals>
+    <plurals name="device_import_truncated">
+        <item quantity="one">%1$d événement importé. Calendriers lus : %2$d. La sélection contenait plus que les %3$d événements acceptés en un seul import — importez les calendriers restants séparément.</item>
+        <item quantity="many">%1$d d’événements importés. Calendriers lus : %2$d. La sélection contenait plus que les %3$d événements acceptés en un seul import — importez les calendriers restants séparément.</item>
+        <item quantity="other">%1$d événements importés. Calendriers lus : %2$d. La sélection contenait plus que les %3$d événements acceptés en un seul import — importez les calendriers restants séparément.</item>
+    </plurals>
     <string name="device_import_clear">Effacer les calendriers déjà importés</string>
     <string name="device_import_cleared">Calendriers importés effacés.</string>
     <string name="device_import_clear_confirm_title">Effacer les calendriers importés ?</string>
@@ -430,8 +442,12 @@
     <string name="backup_restore_confirm_action">Remplacer</string>
     <string name="backup_working">Chiffrement en cours…</string>
     <string name="backup_working_sub">Quelques secondes : c\'est le calcul qui protège votre mot de passe.</string>
-    <string name="backup_exported">Sauvegarde créée : %1$d événement(s).</string>
-    <string name="backup_restored">Restauré : %1$d calendrier(s), %2$d événement(s), %3$d rappel(s).</string>
+    <plurals name="backup_exported">
+        <item quantity="one">Sauvegarde créée : %1$d événement.</item>
+        <item quantity="many">Sauvegarde créée : %1$d d’événements.</item>
+        <item quantity="other">Sauvegarde créée : %1$d événements.</item>
+    </plurals>
+    <string name="backup_restored">Restauré — calendriers : %1$d, événements : %2$d, rappels : %3$d.</string>
     <string name="backup_bad_password">Mot de passe incorrect, ou fichier endommagé.</string>
     <string name="backup_not_a_backup">Ce fichier n\'est pas une sauvegarde Agenda Tech.</string>
     <string name="backup_too_new">Cette sauvegarde a été créée par une version plus récente d\'Agenda Tech. Mettez l\'application à jour pour la restaurer — ne supprimez pas le fichier.</string>

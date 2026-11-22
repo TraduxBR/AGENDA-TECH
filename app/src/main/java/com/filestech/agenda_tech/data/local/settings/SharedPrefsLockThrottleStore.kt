@@ -1,6 +1,7 @@
 package com.filestech.agenda_tech.data.local.settings
 
 import android.content.Context
+import androidx.core.content.edit
 import com.filestech.agenda_tech.security.LockThrottle
 import com.filestech.agenda_tech.security.LockThrottleStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -36,10 +37,10 @@ class SharedPrefsLockThrottleStore @Inject constructor(
     override fun save(throttle: LockThrottle) {
         // commit(), not apply(): apply() hands the write to a background thread, and a force-stop
         // landing in that gap would drop exactly the failed attempt we are trying to remember.
-        prefs.edit()
-            .putInt(KEY_ATTEMPTS, throttle.failedAttempts)
-            .putLong(KEY_LOCKED_UNTIL, throttle.lockedUntilWallMs)
-            .commit()
+        prefs.edit(commit = true) {
+            putInt(KEY_ATTEMPTS, throttle.failedAttempts)
+            putLong(KEY_LOCKED_UNTIL, throttle.lockedUntilWallMs)
+        }
     }
 
     private companion object {

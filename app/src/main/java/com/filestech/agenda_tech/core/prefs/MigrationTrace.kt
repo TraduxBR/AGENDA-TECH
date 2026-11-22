@@ -1,6 +1,7 @@
 package com.filestech.agenda_tech.core.prefs
 
 import android.content.Context
+import androidx.core.content.edit
 import com.filestech.agenda_tech.BuildConfig
 
 /**
@@ -64,9 +65,7 @@ object MigrationTrace {
         val merged = (prefs.getString(KEY, null)?.plus("\n") ?: "") + note
         // Keeps the TAIL: the most recent migration is the one being diagnosed, and an old entry that
         // has to be dropped is one whose migration already shipped and was investigated or forgotten.
-        prefs.edit()
-            .putString(KEY, merged.takeLast(MAX_CHARS))
-            .commit()
+        prefs.edit(commit = true) { putString(KEY, merged.takeLast(MAX_CHARS)) }
     }
 
     /**

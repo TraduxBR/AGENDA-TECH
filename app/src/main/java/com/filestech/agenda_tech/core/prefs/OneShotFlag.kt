@@ -1,6 +1,7 @@
 package com.filestech.agenda_tech.core.prefs
 
 import android.content.Context
+import androidx.core.content.edit
 
 /**
  * A boolean that survives process death: raised by whatever detects a problem, read **exactly once**
@@ -26,14 +27,14 @@ value class OneShotFlag(private val key: String) {
     /** Records that the problem happened. Idempotent; durable across a kill. */
     fun raise(context: Context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(key, true).commit()
+            .edit(commit = true) { putBoolean(key, true) }
     }
 
     /** True once per raise, then false — so the notice is shown exactly once. */
     fun consume(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!prefs.getBoolean(key, false)) return false
-        prefs.edit().remove(key).apply()
+        prefs.edit { remove(key) }
         return true
     }
 
