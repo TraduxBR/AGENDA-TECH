@@ -39,7 +39,8 @@ L'APK est **universel** (fonctionne sur tous les appareils, pas de variante à c
   Italie, Luxembourg, Royaume-Uni, Suisse), calculés sur le téléphone, désactivés par défaut —
   vérifiés jour par jour de 1990 (1991 pour l'Allemagne, 2008 pour l'Espagne) à 2060 contre une
   référence indépendante.
-- **Récurrences** (RFC 5545) : quotidienne / hebdo (jours choisis) / mensuelle / annuelle, avec
+- **Récurrences** (RFC 5545) : quotidienne / hebdo (jours choisis) / mensuelle — à date fixe, par
+  position (le deuxième mardi, le dernier vendredi) ou le dernier jour — / annuelle, avec
   intervalle, fin après N occurrences ou à une date, et **modification/suppression d'une seule
   occurrence** (modèle iCalendar `RECURRENCE-ID`).
 - **Rappels** par alarmes exactes, avec re-programmation après redémarrage : délais prédéfinis ou
@@ -60,6 +61,9 @@ L'APK est **universel** (fonctionne sur tous les appareils, pas de variante à c
   qui ne remplace pas la sauvegarde (il perd rappels, couleurs et structure des calendriers).
 - **Import depuis le calendrier de l'appareil** (Google, Exchange, calendriers locaux) en
   **lecture seule** — l'app copie ce qui est déjà synchronisé sur le téléphone, **sans réseau**.
+  Par l'un ou l'autre import, un événement récurrent dont l'app ne sait pas reproduire la règle (par
+  numéro de semaine, toutes les heures…) arrive à sa seule première date, et l'import dit combien —
+  jamais en série à des dates que son auteur n'a pas choisies.
 - **Recherche** dans tout l'agenda (titre, description, lieu, adresse, ville) — insensible aux
   accents et à la casse : « reunion » trouve « Réunion ».
 - **Verrou optionnel** par code PIN et/ou biométrie.
