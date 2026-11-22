@@ -4,6 +4,8 @@ import com.filestech.agenda_tech.core.crypto.AeadCipher
 import com.filestech.agenda_tech.core.crypto.BackupEnvelope
 import com.filestech.agenda_tech.core.result.AppError
 import com.filestech.agenda_tech.core.result.Outcome
+import com.filestech.agenda_tech.domain.ImportLimits
+import com.filestech.agenda_tech.domain.backup.BackupPayload
 import com.filestech.agenda_tech.domain.model.Calendar
 import com.filestech.agenda_tech.domain.model.CalendarColor
 import com.filestech.agenda_tech.domain.model.Event
@@ -298,7 +300,50 @@ class BackupRoundTripTest {
         assertThat((result as Outcome.Failure).error).isInstanceOf(AppError.Validation::class.java)
     }
 
+    /** The series of [seedAgenda] with [count] distinct cancelled occurrences, a week apart. */
+    private fun withExDates(count: Int): (BackupPayload) -> BackupPayload =
+        { payload ->
+            payload.copy(
+                events = payload.events.map { event ->
+                    if (event.rruleFreqRaw == null) {
+                        event
+                    } else {
+                        event.copy(rruleExDatesUtcMillis = List(count) { event.startUtcMillis + (it + 1) * WEEK_MILLIS })
+                    }
+                },
+            )
+        }
+
+    @Test
+    fun `a series carrying more cancelled occurrences than a database cell holds is refused whole`() = runTest {
+        // Security deep-dive of 2026-11-22: one series' EXDATEs are one text cell, and a row past the
+        // 2 MB CursorWindow makes every query of it throw — the agenda would no longer open. The import
+        // reader caps them; a restore does not go through it.
+        seedAgenda()
+        val tampered = reseal(exportBytes(), withExDates(ImportLimits.MAX_EXDATES_PER_SERIES + 1))
+
+        val result = restore(password(), tampered)
+
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((result as Outcome.Failure).error).isInstanceOf(AppError.Validation::class.java)
+        assertThat(backupRepo.events).containsExactly(weekly, meeting)
+    }
+
+    @Test
+    fun `a series exactly at that ceiling still restores — no real backup is refused`() = runTest {
+        seedAgenda()
+        val atCeiling = reseal(exportBytes(), withExDates(ImportLimits.MAX_EXDATES_PER_SERIES))
+
+        val result = restore(password(), atCeiling)
+
+        assertThat(result).isInstanceOf(Outcome.Success::class.java)
+        val restored = backupRepo.events.single { it.recurrence != null }
+        assertThat(restored.recurrence!!.exDatesUtcMillis).hasSize(ImportLimits.MAX_EXDATES_PER_SERIES)
+    }
+
     private companion object {
+        const val WEEK_MILLIS = 7L * 24 * 60 * 60 * 1000
+
         /** Header layout: magic(5) | envVersion(1) | … — see BackupEnvelope. */
         const val ENVELOPE_VERSION_OFFSET = 5
     }

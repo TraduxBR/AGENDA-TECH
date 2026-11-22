@@ -33,8 +33,8 @@
         <item quantity="other">%1$d Termine importiert</item>
     </plurals>
     <plurals name="import_first_date_only">
-        <item quantity="one">%1$d wiederkehrender Termin folgt einer Regel, die Agenda Tech nicht nachbilden kann: Nur sein erstes Datum wurde importiert.</item>
-        <item quantity="other">%1$d wiederkehrende Termine folgen einer Regel, die Agenda Tech nicht nachbilden kann: Nur ihr erstes Datum wurde importiert.</item>
+        <item quantity="one">%1$d wiederkehrender Termin folgt einer Regel, die Agenda Tech nicht nachbilden kann: Nur sein erstes Datum wurde importiert – oder er blieb unverändert, wenn Ihre Agenda ihn schon enthielt.</item>
+        <item quantity="other">%1$d wiederkehrende Termine folgen einer Regel, die Agenda Tech nicht nachbilden kann: Nur ihr erstes Datum wurde importiert – oder sie blieben unverändert, wenn Ihre Agenda sie schon enthielt.</item>
     </plurals>
     <string name="ics_error">Die Kalenderdatei konnte nicht gelesen werden</string>
     <string name="ics_import_too_many">Diese Datei enthält mehr Termine, als die App annimmt (höchstens %1$d). Teilen Sie sie auf und importieren Sie die Teile.</string>

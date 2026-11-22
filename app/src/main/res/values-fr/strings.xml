@@ -33,9 +33,9 @@
         <item quantity="other">%1$d événements importés</item>
     </plurals>
     <plurals name="import_first_date_only">
-        <item quantity="one">%1$d événement récurrent suit une règle qu’Agenda Tech ne sait pas reproduire : seule sa première date a été importée.</item>
-        <item quantity="many">%1$d d’événements récurrents suivent une règle qu’Agenda Tech ne sait pas reproduire : seule leur première date a été importée.</item>
-        <item quantity="other">%1$d événements récurrents suivent une règle qu’Agenda Tech ne sait pas reproduire : seule leur première date a été importée.</item>
+        <item quantity="one">%1$d événement récurrent suit une règle qu’Agenda Tech ne sait pas reproduire : seule sa première date a été importée, ou il est resté tel quel s’il figurait déjà dans votre agenda.</item>
+        <item quantity="many">%1$d d’événements récurrents suivent une règle qu’Agenda Tech ne sait pas reproduire : seule leur première date a été importée, ou ils sont restés tels quels s’ils figuraient déjà dans votre agenda.</item>
+        <item quantity="other">%1$d événements récurrents suivent une règle qu’Agenda Tech ne sait pas reproduire : seule leur première date a été importée, ou ils sont restés tels quels s’ils figuraient déjà dans votre agenda.</item>
     </plurals>
     <string name="ics_error">Impossible de lire le fichier agenda</string>
     <string name="ics_import_too_many">Ce fichier contient plus d’événements que l’application n’en accepte (%1$d au maximum). Divisez-le et importez les parties.</string>

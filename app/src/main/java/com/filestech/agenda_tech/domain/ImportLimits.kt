@@ -47,4 +47,16 @@ object ImportLimits {
 
     /** Maximum calendars accepted from a single `.atbak` — a list nobody can use is a broken restore. */
     const val MAX_CALENDARS = 1_000
+
+    /**
+     * Maximum cancelled occurrences (`EXDATE`s) one series may carry in a single `.atbak`.
+     *
+     * A series' EXDATEs are stored as ONE text cell, and a row past Android's 2 MB CursorWindow makes
+     * every query that returns it throw — the agenda would no longer open (security deep-dive of
+     * 2026-11-22). An imported rule is capped by the reader (`RecurrenceRule.MAX_EXDATES`); a restore
+     * does not go through it. This ceiling sits far above any real series — an import from the phone's
+     * calendar can legitimately add up to [MAX_EVENTS] moved occurrences — and far below the size that
+     * breaks: 40 000 stamps are about 560 kB of text.
+     */
+    const val MAX_EXDATES_PER_SERIES = 40_000
 }

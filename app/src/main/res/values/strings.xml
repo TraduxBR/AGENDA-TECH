@@ -37,8 +37,8 @@
          follow a rule the app cannot reproduce (BYWEEKNO, HOURLY…): they were imported as their first
          date only, and saying so is the alternative to showing them on dates nobody chose. -->
     <plurals name="import_first_date_only">
-        <item quantity="one">%1$d repeating event uses a rule Agenda Tech cannot reproduce: only its first date was imported.</item>
-        <item quantity="other">%1$d repeating events use a rule Agenda Tech cannot reproduce: only their first date was imported.</item>
+        <item quantity="one">%1$d repeating event uses a rule Agenda Tech cannot reproduce: only its first date was imported, or it was left as it was if your agenda already held it.</item>
+        <item quantity="other">%1$d repeating events use a rule Agenda Tech cannot reproduce: only their first date was imported, or they were left as they were if your agenda already held them.</item>
     </plurals>
     <string name="ics_error">Couldn\'t read the calendar file</string>
     <string name="ics_import_too_many">This file holds more events than the app accepts (maximum: %1$d). Split it and import the parts.</string>
