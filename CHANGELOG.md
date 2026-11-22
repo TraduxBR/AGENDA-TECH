@@ -32,12 +32,16 @@ versions selon [SemVer](https://semver.org/lang/fr/).
 
 ### Changed
 
-- Lint: the warnings that were not dependency-version notices are fixed (47 → 22): the plurals above,
-  KTX forms (`toUri`, `SharedPreferences.edit`, synchronous writes kept with `commit = true`), the
-  Android 13 checks made visible where lint looks for them, the widgets' Android 12 sizes declared as
-  such. The version notices stay visible on purpose: a dependency upgrade is decided on its own, with
-  its F-Droid reproducibility check.
-
+- Lint: 47 warnings → 8, every one a version notice kept on purpose (below). Fixed: the plurals
+  above, KTX forms (`toUri`, `SharedPreferences.edit`, synchronous writes kept with `commit = true`),
+  the Android 13 checks made visible where lint looks for them, the widgets' Android 12 sizes
+  declared as such, and the launcher icon's monochrome layer.
+- Dependencies, aligned on what SMS Tech and Notes Tech already ship and F-Droid already rebuilt:
+  AGP 9.5.1, WorkManager 2.12.0 (frozen at 2.7.1 while the F-Droid inclusion request pinned a
+  commit), Glance 1.2.0, documentfile 1.1.0, SQLCipher 4.20.0, lifecycle 2.11.1, KSP 2.3.13. Kept on
+  purpose, each with its reason in `gradle/libs.versions.toml`: kotlinx-serialization 1.7.3 (it
+  writes the `.atbak` backup, whose format was verified independently), DataStore 1.1.1, Compose
+  BOM 2026.09.00 (the next one needs compileSdk 37.1), Kotlin 2.4.10 (CodeQL), targetSdk 35.
 - The translation check knows the plural categories of Portuguese, now fails on a language whose
   categories it does not know (it skipped its plurals without a word), and reads `locales_config.xml`
   in BCP 47 (`pt-BR`), the form Android parses — it expected `pt-rBR`, which Android reads as plain
